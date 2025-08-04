@@ -60,7 +60,9 @@ The database schema supports the complete procurement workflow with proper relat
 ### Supplier Management
 - **Performance Tracking**: Response time and success rate metrics
 - **Quote Automation**: Automated quote request distribution
-- **API Integration**: Framework for connecting to supplier APIs (mock implementation)
+- **Quote Parser Service**: Advanced JSON-based supplier quote parser with validation
+- **Template System**: Standardized quote template for supplier data submission
+- **API Integration**: Framework for connecting to supplier APIs with real data processing
 
 ## External Dependencies
 

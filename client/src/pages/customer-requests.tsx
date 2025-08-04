@@ -1,14 +1,60 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mail, User, Calendar, FileText, Clock } from "lucide-react";
+import { Mail, User, Calendar, FileText, Clock, Upload, CheckCircle, AlertCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function CustomerRequests() {
+  const [selectedEmail, setSelectedEmail] = useState<any>(null);
+  const [quoteData, setQuoteData] = useState("");
+  const [showQuoteDialog, setShowQuoteDialog] = useState(false);
+  const { toast } = useToast();
+
   const { data: emails, isLoading } = useQuery({
     queryKey: ["/api/emails"],
     refetchInterval: 30000,
+  });
+
+  const { data: templateData } = useQuery({
+    queryKey: ["/api/quotes/template"],
+  });
+
+  const parseQuotesMutation = useMutation({
+    mutationFn: (data: { quoteData: string; emailId: string }) =>
+      apiRequest("/api/quotes/parse", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (data) => {
+      toast({
+        title: "Quotes processed successfully",
+        description: `Processed ${data.processed} quote(s)`,
+      });
+      setShowQuoteDialog(false);
+      setQuoteData("");
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error processing quotes",
+        description: error.message || "Failed to process supplier quotes",
+        variant: "destructive",
+      });
+    },
   });
 
   const getStatusColor = (status: string) => {
@@ -114,6 +160,20 @@ export default function CustomerRequests() {
                     Process Email
                   </Button>
                 )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedEmail(email);
+                    setShowQuoteDialog(true);
+                    setQuoteData(templateData?.template || "");
+                  }}
+                  className="w-full sm:w-auto"
+                  data-testid={`button-process-quote-${email.id}`}
+                >
+                  <Upload className="w-4 h-4 mr-1" />
+                  Process Quote
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -129,6 +189,98 @@ export default function CustomerRequests() {
           </CardContent>
         </Card>
       )}
+      
+      {/* Quote Processing Dialog */}
+      <Dialog open={showQuoteDialog} onOpenChange={setShowQuoteDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Process Supplier Quote</DialogTitle>
+            <DialogDescription>
+              {selectedEmail && (
+                <div className="mt-2 space-y-2">
+                  <p className="text-sm">
+                    <strong>Email Subject:</strong> {selectedEmail.subject}
+                  </p>
+                  <p className="text-sm">
+                    <strong>From:</strong> {selectedEmail.fromEmail}
+                  </p>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="text-sm font-medium">Quote Data (JSON Format)</label>
+              <Textarea
+                value={quoteData}
+                onChange={(e) => setQuoteData(e.target.value)}
+                placeholder="Paste supplier quote data in JSON format..."
+                className="mt-2 h-64 font-mono text-sm"
+                data-testid="textarea-quote-data"
+              />
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setQuoteData(templateData?.template || "")}
+                data-testid="button-load-template"
+              >
+                <FileText className="w-4 h-4 mr-1" />
+                Load Template
+              </Button>
+              
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowQuoteDialog(false);
+                    setQuoteData("");
+                  }}
+                  data-testid="button-cancel"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (selectedEmail && quoteData) {
+                      parseQuotesMutation.mutate({
+                        quoteData,
+                        emailId: selectedEmail.id,
+                      });
+                    }
+                  }}
+                  disabled={!quoteData || parseQuotesMutation.isPending}
+                  data-testid="button-process"
+                >
+                  {parseQuotesMutation.isPending ? (
+                    <>Processing...</>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-1" />
+                      Process Quote
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+            
+            {parseQuotesMutation.isError && (
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                <div className="flex items-start">
+                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 mr-2" />
+                  <div className="text-sm text-red-600 dark:text-red-400">
+                    <p className="font-medium">Error processing quote:</p>
+                    <p className="mt-1">{parseQuotesMutation.error?.message || "Unknown error"}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

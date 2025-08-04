@@ -6,6 +6,7 @@ import { insertCustomerSchema, insertSupplierSchema, insertOrderSchema, insertQu
 import { emailService } from "./services/emailService";
 import { supplierService } from "./services/supplierService";
 import { timwebMailService } from "./services/timwebMailService";
+import { supplierQuoteParser } from "./services/supplierQuoteParser";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -344,6 +345,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Test mode disabled", status: "test_inactive" });
     } catch (error) {
       res.status(500).json({ message: "Failed to disable test mode" });
+    }
+  });
+
+  // Supplier quote processing endpoints
+  app.get("/api/quotes/template", async (req, res) => {
+    const template = supplierQuoteParser.getQuoteTemplate();
+    res.json({ template });
+  });
+
+  app.post("/api/quotes/parse", async (req, res) => {
+    try {
+      const { quoteData, emailId } = req.body;
+      
+      if (!quoteData) {
+        return res.status(400).json({ error: "Quote data is required" });
+      }
+
+      // Parse and validate quote data
+      const parsedQuotes = await supplierQuoteParser.parseQuoteData(
+        typeof quoteData === "string" ? quoteData : JSON.stringify(quoteData)
+      );
+
+      // Process and save quotes
+      const processedQuotes = await supplierQuoteParser.processQuotes(parsedQuotes, emailId);
+
+      res.json({
+        success: true,
+        processed: processedQuotes.length,
+        quotes: processedQuotes,
+      });
+    } catch (error) {
+      console.error("Error processing quotes:", error);
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "Failed to process quotes",
+      });
     }
   });
 
