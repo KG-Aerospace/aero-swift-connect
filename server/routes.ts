@@ -1,0 +1,283 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
+import { storage } from "./storage";
+import { insertCustomerSchema, insertSupplierSchema, insertOrderSchema, insertQuoteSchema, insertEmailSchema } from "@shared/schema";
+import { emailService } from "./services/emailService";
+import { supplierService } from "./services/supplierService";
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  const httpServer = createServer(app);
+
+  // WebSocket setup
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  wss.on('connection', (ws) => {
+    console.log('Client connected to WebSocket');
+    
+    ws.on('close', () => {
+      console.log('Client disconnected from WebSocket');
+    });
+  });
+
+  // Broadcast function for real-time updates
+  const broadcast = (data: any) => {
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify(data));
+      }
+    });
+  };
+
+  // Dashboard API
+  app.get("/api/dashboard/stats", async (_req, res) => {
+    try {
+      const stats = await storage.getDashboardStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  // Orders API
+  app.get("/api/orders", async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const orders = await storage.getOrders(limit);
+      res.json(orders);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
+  app.get("/api/orders/:id", async (req, res) => {
+    try {
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      res.json(order);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch order" });
+    }
+  });
+
+  app.post("/api/orders", async (req, res) => {
+    try {
+      const orderData = insertOrderSchema.parse(req.body);
+      const order = await storage.createOrder(orderData);
+      
+      // Create activity
+      await storage.createActivity({
+        type: "order_created",
+        description: `New order created: ${order.orderNumber}`,
+        entityType: "order",
+        entityId: order.id,
+      });
+      
+      // Broadcast real-time update
+      broadcast({ type: "order_created", data: order });
+      
+      // Start supplier integration process
+      supplierService.processOrderQuotes(order.id);
+      
+      res.status(201).json(order);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid order data" });
+    }
+  });
+
+  app.patch("/api/orders/:id/status", async (req, res) => {
+    try {
+      const { status } = req.body;
+      const order = await storage.updateOrderStatus(req.params.id, status);
+      
+      // Create activity
+      await storage.createActivity({
+        type: "order_status_updated",
+        description: `Order ${order.orderNumber} status updated to ${status}`,
+        entityType: "order",
+        entityId: order.id,
+      });
+      
+      // Broadcast real-time update
+      broadcast({ type: "order_updated", data: order });
+      
+      res.json(order);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update order status" });
+    }
+  });
+
+  // Customers API
+  app.get("/api/customers", async (_req, res) => {
+    try {
+      const customers = await storage.getCustomers();
+      res.json(customers);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch customers" });
+    }
+  });
+
+  app.post("/api/customers", async (req, res) => {
+    try {
+      const customerData = insertCustomerSchema.parse(req.body);
+      const customer = await storage.createCustomer(customerData);
+      res.status(201).json(customer);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid customer data" });
+    }
+  });
+
+  // Suppliers API
+  app.get("/api/suppliers", async (_req, res) => {
+    try {
+      const suppliers = await storage.getSuppliers();
+      res.json(suppliers);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch suppliers" });
+    }
+  });
+
+  app.post("/api/suppliers", async (req, res) => {
+    try {
+      const supplierData = insertSupplierSchema.parse(req.body);
+      const supplier = await storage.createSupplier(supplierData);
+      res.status(201).json(supplier);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid supplier data" });
+    }
+  });
+
+  app.patch("/api/suppliers/:id", async (req, res) => {
+    try {
+      const supplierData = insertSupplierSchema.partial().parse(req.body);
+      const supplier = await storage.updateSupplier(req.params.id, supplierData);
+      res.json(supplier);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid supplier data" });
+    }
+  });
+
+  // Quotes API
+  app.get("/api/quotes", async (_req, res) => {
+    try {
+      const quotes = await storage.getQuotes();
+      res.json(quotes);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch quotes" });
+    }
+  });
+
+  app.get("/api/orders/:orderId/quotes", async (req, res) => {
+    try {
+      const quotes = await storage.getQuotesByOrder(req.params.orderId);
+      res.json(quotes);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch quotes for order" });
+    }
+  });
+
+  app.post("/api/quotes", async (req, res) => {
+    try {
+      const quoteData = insertQuoteSchema.parse(req.body);
+      const quote = await storage.createQuote(quoteData);
+      
+      // Create activity
+      await storage.createActivity({
+        type: "quote_received",
+        description: `New quote received from supplier`,
+        entityType: "quote",
+        entityId: quote.id,
+      });
+      
+      // Broadcast real-time update
+      broadcast({ type: "quote_created", data: quote });
+      
+      res.status(201).json(quote);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid quote data" });
+    }
+  });
+
+  app.patch("/api/quotes/:id/status", async (req, res) => {
+    try {
+      const { status } = req.body;
+      const quote = await storage.updateQuoteStatus(req.params.id, status);
+      
+      // Create activity
+      await storage.createActivity({
+        type: "quote_status_updated",
+        description: `Quote status updated to ${status}`,
+        entityType: "quote",
+        entityId: quote.id,
+      });
+      
+      // Broadcast real-time update
+      broadcast({ type: "quote_updated", data: quote });
+      
+      res.json(quote);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update quote status" });
+    }
+  });
+
+  // Emails API
+  app.get("/api/emails", async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const emails = await storage.getEmails(limit);
+      res.json(emails);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch emails" });
+    }
+  });
+
+  app.post("/api/emails", async (req, res) => {
+    try {
+      const emailData = insertEmailSchema.parse(req.body);
+      const email = await storage.createEmail(emailData);
+      
+      // Process email asynchronously
+      emailService.processEmail(email.id);
+      
+      res.status(201).json(email);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid email data" });
+    }
+  });
+
+  // Activities API
+  app.get("/api/activities", async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const activities = await storage.getRecentActivities(limit);
+      res.json(activities);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch activities" });
+    }
+  });
+
+  // Email processing endpoint
+  app.post("/api/emails/process-batch", async (req, res) => {
+    try {
+      const result = await emailService.processBatch();
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to process email batch" });
+    }
+  });
+
+  // Supplier integration endpoint
+  app.post("/api/suppliers/send-requests", async (req, res) => {
+    try {
+      const { orderId } = req.body;
+      const result = await supplierService.processOrderQuotes(orderId);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to send supplier requests" });
+    }
+  });
+
+  return httpServer;
+}
