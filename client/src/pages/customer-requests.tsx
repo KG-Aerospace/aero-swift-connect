@@ -29,29 +29,29 @@ export default function CustomerRequests() {
   });
 
   const { data: templateData } = useQuery({
-    queryKey: ["/api/quotes/template"],
+    queryKey: ["/api/procurement/template"],
   });
 
-  const parseQuotesMutation = useMutation({
-    mutationFn: (data: { quoteData: string; emailId: string }) =>
-      apiRequest("/api/quotes/parse", {
+  const createProcurementMutation = useMutation({
+    mutationFn: (data: { requestData: string; emailId: string }) =>
+      apiRequest("/api/procurement/create", {
         method: "POST",
         body: JSON.stringify(data),
       }),
     onSuccess: (data) => {
       toast({
-        title: "Quotes processed successfully",
-        description: `Processed ${data.processed} quote(s)`,
+        title: "Procurement request created successfully",
+        description: `Created ${data.created} procurement request(s)`,
       });
       setShowQuoteDialog(false);
       setQuoteData("");
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/procurement/requests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
     },
     onError: (error: any) => {
       toast({
-        title: "Error processing quotes",
-        description: error.message || "Failed to process supplier quotes",
+        title: "Error creating procurement request",
+        description: error.message || "Failed to create procurement request",
         variant: "destructive",
       });
     },
@@ -172,7 +172,7 @@ export default function CustomerRequests() {
                   data-testid={`button-process-quote-${email.id}`}
                 >
                   <Upload className="w-4 h-4 mr-1" />
-                  Process Quote
+                  Create Procurement
                 </Button>
               </div>
             </div>
@@ -194,7 +194,7 @@ export default function CustomerRequests() {
       <Dialog open={showQuoteDialog} onOpenChange={setShowQuoteDialog}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Process Supplier Quote</DialogTitle>
+            <DialogTitle>Create Procurement Request</DialogTitle>
             <DialogDescription>
               {selectedEmail && (
                 <div className="mt-2 space-y-2">
@@ -211,11 +211,11 @@ export default function CustomerRequests() {
           
           <div className="space-y-4 mt-4">
             <div>
-              <label className="text-sm font-medium">Quote Data (JSON Format)</label>
+              <label className="text-sm font-medium">Procurement Request Data (JSON Format)</label>
               <Textarea
                 value={quoteData}
                 onChange={(e) => setQuoteData(e.target.value)}
-                placeholder="Paste supplier quote data in JSON format..."
+                placeholder="Paste supplier quote data to create procurement request..."
                 className="mt-2 h-64 font-mono text-sm"
                 data-testid="textarea-quote-data"
               />
@@ -246,34 +246,34 @@ export default function CustomerRequests() {
                 <Button
                   onClick={() => {
                     if (selectedEmail && quoteData) {
-                      parseQuotesMutation.mutate({
-                        quoteData,
+                      createProcurementMutation.mutate({
+                        requestData: quoteData,
                         emailId: selectedEmail.id,
                       });
                     }
                   }}
-                  disabled={!quoteData || parseQuotesMutation.isPending}
+                  disabled={!quoteData || createProcurementMutation.isPending}
                   data-testid="button-process"
                 >
-                  {parseQuotesMutation.isPending ? (
-                    <>Processing...</>
+                  {createProcurementMutation.isPending ? (
+                    <>Creating Request...</>
                   ) : (
                     <>
                       <CheckCircle className="w-4 h-4 mr-1" />
-                      Process Quote
+                      Create Procurement Request
                     </>
                   )}
                 </Button>
               </div>
             </div>
             
-            {parseQuotesMutation.isError && (
+            {createProcurementMutation.isError && (
               <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
                 <div className="flex items-start">
                   <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 mr-2" />
                   <div className="text-sm text-red-600 dark:text-red-400">
-                    <p className="font-medium">Error processing quote:</p>
-                    <p className="mt-1">{parseQuotesMutation.error?.message || "Unknown error"}</p>
+                    <p className="font-medium">Error creating procurement request:</p>
+                    <p className="mt-1">{createProcurementMutation.error?.message || "Unknown error"}</p>
                   </div>
                 </div>
               </div>

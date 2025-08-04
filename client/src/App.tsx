@@ -12,6 +12,7 @@ import Suppliers from "@/pages/suppliers";
 import Analytics from "@/pages/analytics";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
+import Procurement from "@/pages/procurement";
 import { useState } from "react";
 
 function Router() {
@@ -29,6 +30,7 @@ function Router() {
             <Route path="/orders" component={Orders} />
             <Route path="/quotes" component={Quotes} />
             <Route path="/suppliers" component={Suppliers} />
+            <Route path="/procurement" component={Procurement} />
             <Route path="/analytics" component={Analytics} />
             <Route component={NotFound} />
           </Switch>

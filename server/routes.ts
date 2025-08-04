@@ -2,11 +2,12 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { insertCustomerSchema, insertSupplierSchema, insertOrderSchema, insertQuoteSchema, insertEmailSchema } from "@shared/schema";
+import { insertCustomerSchema, insertSupplierSchema, insertOrderSchema, insertQuoteSchema, insertEmailSchema, insertProcurementRequestSchema } from "@shared/schema";
 import { emailService } from "./services/emailService";
 import { supplierService } from "./services/supplierService";
 import { timwebMailService } from "./services/timwebMailService";
 import { supplierQuoteParser } from "./services/supplierQuoteParser";
+import { procurementRequestService } from "./services/procurementRequestService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -348,38 +349,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Supplier quote processing endpoints
-  app.get("/api/quotes/template", async (req, res) => {
-    const template = supplierQuoteParser.getQuoteTemplate();
+  // Procurement request endpoints
+  app.get("/api/procurement/template", async (req, res) => {
+    const template = procurementRequestService.getRequestTemplate();
     res.json({ template });
   });
 
-  app.post("/api/quotes/parse", async (req, res) => {
+  app.post("/api/procurement/create", async (req, res) => {
     try {
-      const { quoteData, emailId } = req.body;
+      const { requestData, emailId } = req.body;
       
-      if (!quoteData) {
-        return res.status(400).json({ error: "Quote data is required" });
+      if (!requestData) {
+        return res.status(400).json({ error: "Request data is required" });
       }
 
-      // Parse and validate quote data
-      const parsedQuotes = await supplierQuoteParser.parseQuoteData(
-        typeof quoteData === "string" ? quoteData : JSON.stringify(quoteData)
+      // Parse and validate procurement data
+      const parsedData = await procurementRequestService.parseProcurementData(
+        typeof requestData === "string" ? requestData : JSON.stringify(requestData)
       );
 
-      // Process and save quotes
-      const processedQuotes = await supplierQuoteParser.processQuotes(parsedQuotes, emailId);
+      // Create procurement requests
+      const createdRequests = await procurementRequestService.createProcurementRequests(
+        parsedData, 
+        emailId
+      );
 
       res.json({
         success: true,
-        processed: processedQuotes.length,
-        quotes: processedQuotes,
+        created: createdRequests.length,
+        requests: createdRequests,
       });
     } catch (error) {
-      console.error("Error processing quotes:", error);
+      console.error("Error creating procurement requests:", error);
       res.status(400).json({
-        error: error instanceof Error ? error.message : "Failed to process quotes",
+        error: error instanceof Error ? error.message : "Failed to create procurement requests",
       });
+    }
+  });
+
+  app.get("/api/procurement/requests", async (req, res) => {
+    try {
+      const { status, supplierId, orderId } = req.query;
+      const requests = await procurementRequestService.getProcurementRequests({
+        status: status as string,
+        supplierId: supplierId as string,
+        orderId: orderId as string,
+      });
+      res.json(requests);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch procurement requests" });
+    }
+  });
+
+  app.post("/api/procurement/approve/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      // For now, use a default user ID - in production, get from session
+      const userId = "system";
+      
+      const approved = await procurementRequestService.approveProcurementRequest(id, userId);
+      if (approved) {
+        res.json({ success: true, request: approved });
+      } else {
+        res.status(404).json({ error: "Procurement request not found" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to approve procurement request" });
+    }
+  });
+
+  app.post("/api/procurement/reject/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      
+      if (!reason) {
+        return res.status(400).json({ error: "Rejection reason is required" });
+      }
+      
+      // For now, use a default user ID - in production, get from session
+      const userId = "system";
+      
+      const rejected = await procurementRequestService.rejectProcurementRequest(id, userId, reason);
+      if (rejected) {
+        res.json({ success: true, request: rejected });
+      } else {
+        res.status(404).json({ error: "Procurement request not found" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to reject procurement request" });
     }
   });
 

@@ -67,6 +67,12 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
       active: location === "/suppliers",
     },
     {
+      path: "/procurement",
+      label: "Procurement",
+      icon: FileText,
+      active: location === "/procurement",
+    },
+    {
       path: "/analytics",
       label: "Analytics",
       icon: BarChart2,

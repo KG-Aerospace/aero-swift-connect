@@ -88,6 +88,34 @@ export const activities = pgTable("activities", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Procurement requests table
+export const procurementRequests = pgTable("procurement_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  requestNumber: text("request_number").unique().notNull(),
+  orderId: varchar("order_id").references(() => orders.id),
+  emailId: varchar("email_id").references(() => emails.id),
+  supplierId: varchar("supplier_id").references(() => suppliers.id),
+  status: text("status").notNull().default("pending"), // pending, approved, rejected, processing, completed
+  partNumber: text("part_number").notNull(),
+  quantity: integer("quantity").notNull(),
+  unitOfMeasure: text("unit_of_measure").notNull(),
+  condition: text("condition").notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").notNull(),
+  leadTimeDays: integer("lead_time_days").notNull(),
+  moq: integer("moq").default(1),
+  deliveryTerms: text("delivery_terms").notNull(),
+  deliveryLocation: text("delivery_location").notNull(),
+  supplierDetails: jsonb("supplier_details").notNull(),
+  notes: text("notes"),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const customersRelations = relations(customers, ({ many }) => ({
   orders: many(orders),
@@ -126,6 +154,29 @@ export const quotesRelations = relations(quotes, ({ one }) => ({
   supplier: one(suppliers, {
     fields: [quotes.supplierId],
     references: [suppliers.id],
+  }),
+}));
+
+export const procurementRequestsRelations = relations(procurementRequests, ({ one }) => ({
+  order: one(orders, {
+    fields: [procurementRequests.orderId],
+    references: [orders.id],
+  }),
+  email: one(emails, {
+    fields: [procurementRequests.emailId],
+    references: [emails.id],
+  }),
+  supplier: one(suppliers, {
+    fields: [procurementRequests.supplierId],
+    references: [suppliers.id],
+  }),
+  approvedByUser: one(users, {
+    fields: [procurementRequests.approvedBy],
+    references: [users.id],
+  }),
+  createdByUser: one(users, {
+    fields: [procurementRequests.createdBy],
+    references: [users.id],
   }),
 }));
 
@@ -174,6 +225,13 @@ export const insertActivitySchema = createInsertSchema(activities).omit({
   createdAt: true,
 });
 
+export const insertProcurementRequestSchema = createInsertSchema(procurementRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  approvedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -195,3 +253,6 @@ export type InsertQuote = z.infer<typeof insertQuoteSchema>;
 
 export type Activity = typeof activities.$inferSelect;
 export type InsertActivity = z.infer<typeof insertActivitySchema>;
+
+export type ProcurementRequest = typeof procurementRequests.$inferSelect;
+export type InsertProcurementRequest = z.infer<typeof insertProcurementRequestSchema>;

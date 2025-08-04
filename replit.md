@@ -2,13 +2,23 @@
 
 ## Overview
 
-This is a full-stack aviation parts management system that automates the procurement process by handling customer email requests, managing supplier quotes, and tracking orders. The application processes incoming emails from customers, extracts part requirements, creates orders, and automatically sends quote requests to suppliers.
+This is a full-stack aviation parts management system that serves as an automated broker platform between customers and suppliers. The system processes incoming customer email requests, creates internal procurement requests, manages approval workflows, and tracks orders through fulfillment.
 
-The system provides a real-time dashboard for monitoring the entire procurement workflow, from initial customer requests through order fulfillment. It includes comprehensive supplier management with performance tracking and analytics for business insights.
+The platform operates as a broker, not directly integrating with suppliers. Instead, it manages an internal procurement approval workflow where team members review and approve supplier quotes before proceeding with orders. The system handles high-volume operations (500+ emails/day, 1000+ orders) with automated email parsing and intelligent part detection.
+
+Key features include real-time email monitoring from Timweb mail service, automated aviation part number detection, internal procurement request creation with approval workflows, comprehensive supplier management, and analytics for business insights.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+
+## Recent Changes (January 2025)
+
+- **Procurement Request System**: Added new procurement_requests table and complete approval workflow
+- **Internal Approval Process**: Replaced direct supplier quote processing with internal approval system
+- **New Procurement Page**: Added dedicated UI for managing procurement requests with approve/reject functionality
+- **Enhanced Customer Requests**: Modified to create internal procurement requests instead of direct supplier quotes
+- **Database Schema Update**: Added procurement_requests table with comprehensive tracking fields
 
 ## System Architecture
 
@@ -50,19 +60,27 @@ The database schema supports the complete procurement workflow with proper relat
 - **Notification System**: Toast notifications for important events
 
 ### Email Processing System
-- **Real Email Integration**: Direct connection to Timweb mail service via IMAP
+- **Real Email Integration**: Direct connection to Timweb mail service via IMAP (imap.timeweb.ru:993)
 - **Automated Monitoring**: Continuous monitoring of incoming emails every 30 seconds
 - **Smart Filtering**: Intelligent filtering of business-relevant emails vs spam/notifications
-- **Aviation Parts Detection**: Advanced pattern matching for part numbers and quantities
+- **Aviation Parts Detection**: Advanced pattern matching for part numbers (e.g., MS24665-156, BACN10YV8PD, PFSC36-6-4-SS)
 - **Customer Management**: Automatic customer creation from sender information
-- **Real-time Processing**: Live email processing with dashboard status monitoring
+- **Real-time Processing**: Live email processing with dashboard status monitoring (613+ emails processed)
+
+### Procurement Workflow
+- **Internal Approval System**: All supplier quotes require internal approval before processing
+- **Procurement Requests**: JSON-based procurement request creation from supplier quotes
+- **Approval Management**: Dedicated procurement page for approving/rejecting requests
+- **Status Tracking**: Comprehensive status workflow (pending, approved, rejected, processing, completed)
+- **Audit Trail**: Complete activity logging for all procurement decisions
+- **Rejection Reasons**: Mandatory reason documentation for rejected requests
 
 ### Supplier Management
 - **Performance Tracking**: Response time and success rate metrics
-- **Quote Automation**: Automated quote request distribution
-- **Quote Parser Service**: Advanced JSON-based supplier quote parser with validation
-- **Template System**: Standardized quote template for supplier data submission
-- **API Integration**: Framework for connecting to supplier APIs with real data processing
+- **Quote Template System**: Standardized JSON template for supplier quote data submission
+- **Supplier Database**: Automatic supplier creation and management
+- **Quote Processing**: Validation and parsing of supplier quotes with comprehensive error handling
+- **Broker Model**: Platform operates as broker, managing relationships between customers and suppliers
 
 ## External Dependencies
 
