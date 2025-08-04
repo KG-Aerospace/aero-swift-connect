@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import Header from "@/components/layout/header";
 import KPICards from "@/components/dashboard/kpi-cards";
 import RecentOrders from "@/components/dashboard/recent-orders";
 import EmailStatus from "@/components/dashboard/email-status";
@@ -22,34 +21,29 @@ export default function Dashboard() {
   }
 
   return (
-    <>
-      <Header 
-        title="Dashboard" 
-        subtitle="Real-time overview of aviation parts management"
-      />
-      
-      <main className="flex-1 overflow-y-auto p-6" data-testid="dashboard-main">
-        {/* KPI Cards */}
-        <KPICards stats={stats as any} />
+    <div className="space-y-6" data-testid="dashboard-main">
+      {/* KPI Cards */}
+      <KPICards stats={stats as any} />
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Recent Orders Table */}
+      {/* Main Content Grid - Mobile responsive */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Recent Orders Table - Full width on mobile, 2 cols on xl */}
+        <div className="xl:col-span-2">
           <RecentOrders />
-
-          {/* Right Sidebar */}
-          <div className="space-y-6">
-            {/* Email Processing Status */}
-            <EmailStatus />
-
-            {/* Top Suppliers */}
-            <TopSuppliers />
-
-            {/* Recent Activity */}
-            <RecentActivity />
-          </div>
         </div>
-      </main>
-    </>
+
+        {/* Right Sidebar - Full width on mobile, 1 col on xl */}
+        <div className="space-y-6">
+          {/* Email Processing Status */}
+          <EmailStatus />
+
+          {/* Top Suppliers */}
+          <TopSuppliers />
+
+          {/* Recent Activity */}
+          <RecentActivity />
+        </div>
+      </div>
+    </div>
   );
 }

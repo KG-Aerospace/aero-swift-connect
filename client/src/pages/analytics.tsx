@@ -1,18 +1,11 @@
-import Header from "@/components/layout/header";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, BarChart, PieChart } from "lucide-react";
 
 export default function Analytics() {
   return (
-    <>
-      <Header 
-        title="Analytics" 
-        subtitle="Insights and performance metrics for aviation parts procurement"
-      />
-      
-      <main className="flex-1 overflow-y-auto p-6" data-testid="analytics-main">
-        {/* Key Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <div className="space-y-6" data-testid="analytics-main">
+      {/* Key Metrics Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
           <Card className="border border-gray-200">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -183,7 +176,6 @@ export default function Analytics() {
             </CardContent>
           </Card>
         </div>
-      </main>
-    </>
-  );
-}
+      </div>
+    );
+  }

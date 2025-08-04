@@ -8,12 +8,20 @@ import {
   Truck, 
   BarChart2,
   Settings,
-  User
+  User,
+  X
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-export default function Sidebar() {
+interface SidebarProps {
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
+}
+
+export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
   const [location] = useLocation();
 
   const { data: stats } = useQuery({
@@ -66,19 +74,19 @@ export default function Sidebar() {
     },
   ];
 
-  return (
-    <div className="w-64 bg-white shadow-lg flex flex-col" data-testid="sidebar">
+  const SidebarContent = () => (
+    <div className="bg-white dark:bg-gray-800 shadow-lg flex flex-col h-full" data-testid="sidebar">
       {/* Logo Section */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
             <Plane className="text-white text-lg" data-testid="logo-icon" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900" data-testid="logo-title">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white" data-testid="logo-title">
               AviationParts
             </h1>
-            <p className="text-sm text-gray-500" data-testid="logo-subtitle">
+            <p className="text-sm text-gray-500 dark:text-gray-400" data-testid="logo-subtitle">
               Management System
             </p>
           </div>
@@ -95,9 +103,10 @@ export default function Sidebar() {
                 className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
                   item.active
                     ? "bg-primary text-white"
-                    : "text-gray-700 hover:bg-gray-100"
+                    : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                 }`}
                 data-testid={`nav-${item.path.slice(1) || "dashboard"}`}
+                onClick={() => setSidebarOpen(false)}
               >
                 <IconComponent className="w-5 h-5" />
                 <span className="font-medium">{item.label}</span>
@@ -117,21 +126,21 @@ export default function Sidebar() {
       </nav>
 
       {/* User Profile */}
-      <div className="p-4 border-t border-gray-200" data-testid="user-profile">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700" data-testid="user-profile">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-            <User className="text-gray-600 text-sm" data-testid="user-avatar" />
+          <div className="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
+            <User className="text-gray-600 dark:text-gray-300 text-sm" data-testid="user-avatar" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900" data-testid="user-name">
+            <p className="text-sm font-medium text-gray-900 dark:text-white" data-testid="user-name">
               John Smith
             </p>
-            <p className="text-xs text-gray-500" data-testid="user-role">
+            <p className="text-xs text-gray-500 dark:text-gray-400" data-testid="user-role">
               System Administrator
             </p>
           </div>
           <button 
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             data-testid="user-settings"
           >
             <Settings className="w-4 h-4" />
@@ -139,5 +148,31 @@ export default function Sidebar() {
         </div>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <div className="hidden md:flex w-64">
+        <SidebarContent />
+      </div>
+      
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 md:hidden bg-black bg-opacity-50"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      
+      {/* Mobile Sidebar */}
+      <div 
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out md:hidden ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <SidebarContent />
+      </div>
+    </>
   );
 }

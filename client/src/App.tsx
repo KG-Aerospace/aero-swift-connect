@@ -11,21 +11,28 @@ import Quotes from "@/pages/quotes";
 import Suppliers from "@/pages/suppliers";
 import Analytics from "@/pages/analytics";
 import Sidebar from "@/components/layout/sidebar";
+import Header from "@/components/layout/header";
+import { useState } from "react";
 
 function Router() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+      <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Switch>
-          <Route path="/" component={Dashboard} />
-          <Route path="/customer-requests" component={CustomerRequests} />
-          <Route path="/orders" component={Orders} />
-          <Route path="/quotes" component={Quotes} />
-          <Route path="/suppliers" component={Suppliers} />
-          <Route path="/analytics" component={Analytics} />
-          <Route component={NotFound} />
-        </Switch>
+        <Header setSidebarOpen={setSidebarOpen} />
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/customer-requests" component={CustomerRequests} />
+            <Route path="/orders" component={Orders} />
+            <Route path="/quotes" component={Quotes} />
+            <Route path="/suppliers" component={Suppliers} />
+            <Route path="/analytics" component={Analytics} />
+            <Route component={NotFound} />
+          </Switch>
+        </main>
       </div>
     </div>
   );

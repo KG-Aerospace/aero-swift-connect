@@ -48,33 +48,33 @@ export default function KPICards({ stats }: KPICardsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6" data-testid="kpi-cards">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6" data-testid="kpi-cards">
       {cards.map((card, index) => (
-        <Card key={index} className="border border-gray-200" data-testid={`kpi-card-${index}`}>
-          <CardContent className="p-6">
+        <Card key={index} className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800" data-testid={`kpi-card-${index}`}>
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600" data-testid={`kpi-title-${index}`}>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 truncate" data-testid={`kpi-title-${index}`}>
                   {card.title}
                 </p>
-                <p className="text-3xl font-bold text-gray-900" data-testid={`kpi-value-${index}`}>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white" data-testid={`kpi-value-${index}`}>
                   {card.value}
                 </p>
-                <p className={`text-sm mt-1 flex items-center ${
-                  card.trend === "up" ? "text-success" : 
-                  card.trend === "down" ? "text-error" : "text-warning"
+                <p className={`text-xs sm:text-sm mt-1 flex items-center ${
+                  card.trend === "up" ? "text-green-600 dark:text-green-400" : 
+                  card.trend === "down" ? "text-red-600 dark:text-red-400" : "text-yellow-600 dark:text-yellow-400"
                 }`} data-testid={`kpi-change-${index}`}>
-                  {card.trend === "up" && <TrendingUp className="w-4 h-4 mr-1" />}
-                  {card.trend === "down" && <TrendingDown className="w-4 h-4 mr-1" />}
-                  {card.trend === "neutral" && <Clock className="w-4 h-4 mr-1" />}
-                  {card.change}
+                  {card.trend === "up" && <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />}
+                  {card.trend === "down" && <TrendingDown className="w-3 h-3 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />}
+                  {card.trend === "neutral" && <Clock className="w-3 h-3 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />}
+                  <span className="truncate">{card.change}</span>
                 </p>
               </div>
-              <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-xl ${
-                card.color === "blue" ? "bg-blue-100" :
-                card.color === "green" ? "bg-green-100" :
-                card.color === "yellow" ? "bg-yellow-100" :
-                "bg-purple-100"
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center text-lg sm:text-xl flex-shrink-0 ml-3 ${
+                card.color === "blue" ? "bg-blue-100 dark:bg-blue-900" :
+                card.color === "green" ? "bg-green-100 dark:bg-green-900" :
+                card.color === "yellow" ? "bg-yellow-100 dark:bg-yellow-900" :
+                "bg-purple-100 dark:bg-purple-900"
               }`} data-testid={`kpi-icon-${index}`}>
                 {card.icon}
               </div>
