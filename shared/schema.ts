@@ -41,6 +41,7 @@ export const emails = pgTable("emails", {
   subject: text("subject").notNull(),
   body: text("body").notNull(),
   processedAt: timestamp("processed_at"),
+  receivedAt: timestamp("received_at").defaultNow(),
   status: text("status").notNull().default("pending"), // pending, processed, failed
   customerId: varchar("customer_id").references(() => customers.id),
   metadata: jsonb("metadata"),

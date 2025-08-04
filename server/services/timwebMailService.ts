@@ -96,6 +96,8 @@ export class TimwebMailService {
       this.checkInterval = null;
     }
     
+    this.testMode = false;
+    
     if (this.isConnected) {
       this.imap.end();
     }
@@ -186,7 +188,7 @@ export class TimwebMailService {
       const [savedEmail] = await db
         .insert(emails)
         .values({
-          from: fromEmail,
+          fromEmail: fromEmail,
           subject,
           body: body.substring(0, 5000), // Limit body length
           status: "pending",
@@ -410,12 +412,11 @@ export class TimwebMailService {
       const [savedEmail] = await db
         .insert(emails)
         .values({
-          from: randomEmail.from,
+          fromEmail: randomEmail.from,
           subject: randomEmail.subject,
           body: randomEmail.body,
           status: "pending",
           customerId: customer.id,
-          receivedAt: new Date(),
         })
         .returning();
 
