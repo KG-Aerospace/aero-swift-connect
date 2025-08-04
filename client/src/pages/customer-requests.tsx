@@ -33,11 +33,10 @@ export default function CustomerRequests() {
   });
 
   const createProcurementMutation = useMutation({
-    mutationFn: (data: { requestData: string; emailId: string }) =>
-      apiRequest("/api/procurement/create", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
+    mutationFn: async (data: { requestData: string; emailId: string }) => {
+      const response = await apiRequest("POST", "/api/procurement/create", data);
+      return response.json();
+    },
     onSuccess: (data) => {
       toast({
         title: "Procurement request created successfully",
@@ -166,7 +165,7 @@ export default function CustomerRequests() {
                   onClick={() => {
                     setSelectedEmail(email);
                     setShowQuoteDialog(true);
-                    setQuoteData(templateData?.template || "");
+                    setQuoteData((templateData as any)?.template || "");
                   }}
                   className="w-full sm:w-auto"
                   data-testid={`button-process-quote-${email.id}`}
@@ -225,7 +224,7 @@ export default function CustomerRequests() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setQuoteData(templateData?.template || "")}
+                onClick={() => setQuoteData((templateData as any)?.template || "")}
                 data-testid="button-load-template"
               >
                 <FileText className="w-4 h-4 mr-1" />

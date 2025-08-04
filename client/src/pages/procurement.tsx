@@ -51,10 +51,10 @@ export default function Procurement() {
   });
 
   const approveMutation = useMutation({
-    mutationFn: (id: string) =>
-      apiRequest(`/api/procurement/approve/${id}`, {
-        method: "POST",
-      }),
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("POST", `/api/procurement/approve/${id}`);
+      return response.json();
+    },
     onSuccess: () => {
       toast({
         title: "Request approved",
@@ -72,11 +72,10 @@ export default function Procurement() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      apiRequest(`/api/procurement/reject/${id}`, {
-        method: "POST",
-        body: JSON.stringify({ reason }),
-      }),
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      const response = await apiRequest("POST", `/api/procurement/reject/${id}`, { reason });
+      return response.json();
+    },
     onSuccess: () => {
       toast({
         title: "Request rejected",
