@@ -25,16 +25,21 @@ export class TimwebMailService {
       port: parseInt(process.env.TIMWEB_MAIL_PORT || "993"),
       user: process.env.TIMWEB_MAIL_USER || "",
       password: process.env.TIMWEB_MAIL_PASSWORD || "",
-      secure: process.env.TIMWEB_MAIL_SECURE === "true",
+      secure: true, // Always use TLS for port 993
     };
 
     this.imap = new Imap({
       host: this.config.host,
       port: this.config.port,
-      tls: this.config.secure,
+      tls: true,
       user: this.config.user,
       password: this.config.password,
       keepalive: true,
+      authTimeout: 30000, // 30 seconds timeout
+      connTimeout: 30000,
+      tlsOptions: { 
+        rejectUnauthorized: false // Allow self-signed certificates
+      }
     });
 
     this.setupEventHandlers();
@@ -49,11 +54,17 @@ export class TimwebMailService {
 
     this.imap.once("error", (err: Error) => {
       console.error("📧 IMAP connection error:", err.message);
+      console.error("📧 Full error details:", err);
       this.isConnected = false;
     });
 
     this.imap.once("end", () => {
       console.log("📧 IMAP connection ended");
+      this.isConnected = false;
+    });
+
+    this.imap.once("close", (hadError: boolean) => {
+      console.log("📧 IMAP connection closed", hadError ? "with error" : "normally");
       this.isConnected = false;
     });
   }
@@ -74,9 +85,11 @@ export class TimwebMailService {
         host: this.config.host,
         port: this.config.port,
         user: this.config.user,
-        secure: this.config.secure
+        secure: this.config.secure,
+        tls: true
       });
       
+      console.log("📧 Attempting to connect to IMAP server...");
       this.imap.connect();
       
       // Check for new emails every 30 seconds
