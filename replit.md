@@ -50,9 +50,12 @@ The database schema supports the complete procurement workflow with proper relat
 - **Notification System**: Toast notifications for important events
 
 ### Email Processing System
-- **Automated Parsing**: Email content analysis to extract part numbers, quantities, and requirements
-- **Customer Management**: Automatic customer creation and linking
-- **Order Generation**: Conversion of email requests to structured orders
+- **Real Email Integration**: Direct connection to Timweb mail service via IMAP
+- **Automated Monitoring**: Continuous monitoring of incoming emails every 30 seconds
+- **Smart Filtering**: Intelligent filtering of business-relevant emails vs spam/notifications
+- **Aviation Parts Detection**: Advanced pattern matching for part numbers and quantities
+- **Customer Management**: Automatic customer creation from sender information
+- **Real-time Processing**: Live email processing with dashboard status monitoring
 
 ### Supplier Management
 - **Performance Tracking**: Response time and success rate metrics

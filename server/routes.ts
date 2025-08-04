@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { insertCustomerSchema, insertSupplierSchema, insertOrderSchema, insertQuoteSchema, insertEmailSchema } from "@shared/schema";
 import { emailService } from "./services/emailService";
 import { supplierService } from "./services/supplierService";
+import { timwebMailService } from "./services/timwebMailService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -276,6 +277,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result);
     } catch (error) {
       res.status(500).json({ message: "Failed to send supplier requests" });
+    }
+  });
+
+  // Timweb Mail Service API
+  app.get("/api/mail/status", async (req, res) => {
+    try {
+      const status = timwebMailService.getConnectionStatus();
+      res.json(status);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get mail service status" });
+    }
+  });
+
+  app.post("/api/mail/start", async (req, res) => {
+    try {
+      await timwebMailService.startEmailMonitoring();
+      res.json({ message: "Email monitoring started", status: "active" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to start email monitoring" });
+    }
+  });
+
+  app.post("/api/mail/stop", async (req, res) => {
+    try {
+      timwebMailService.stopEmailMonitoring();
+      res.json({ message: "Email monitoring stopped", status: "inactive" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to stop email monitoring" });
+    }
+  });
+
+  app.post("/api/mail/test", async (req, res) => {
+    try {
+      // Test basic connection parameters
+      const testConfig = {
+        host: process.env.TIMWEB_MAIL_HOST,
+        port: parseInt(process.env.TIMWEB_MAIL_PORT || "993"),
+        user: process.env.TIMWEB_MAIL_USER,
+        password: process.env.TIMWEB_MAIL_PASSWORD ? "configured" : "missing",
+        secure: process.env.TIMWEB_MAIL_SECURE === "true"
+      };
+
+      res.json({
+        message: "Configuration test completed",
+        config: testConfig,
+        isConfigured: !!(testConfig.host && testConfig.user && process.env.TIMWEB_MAIL_PASSWORD)
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Configuration test failed" });
     }
   });
 

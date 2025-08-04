@@ -4,6 +4,7 @@ import RecentOrders from "@/components/dashboard/recent-orders";
 import EmailStatus from "@/components/dashboard/email-status";
 import TopSuppliers from "@/components/dashboard/top-suppliers";
 import RecentActivity from "@/components/dashboard/recent-activity";
+import { MailStatusCard } from "@/components/ui/mail-status";
 import { useWebSocket } from "@/hooks/useWebSocket";
 
 export default function Dashboard() {
@@ -34,6 +35,9 @@ export default function Dashboard() {
 
         {/* Right Sidebar - Full width on mobile, 1 col on xl */}
         <div className="space-y-6">
+          {/* Email Service Status */}
+          <MailStatusCard />
+
           {/* Email Processing Status */}
           <EmailStatus />
 
