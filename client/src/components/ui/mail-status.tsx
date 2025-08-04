@@ -60,7 +60,7 @@ export function MailStatusCard() {
 
   const handleTest = async () => {
     try {
-      const result = await apiRequest('/api/mail/test', 'POST');
+      const result: any = await apiRequest('/api/mail/test', 'POST');
       toast({
         title: "Configuration Test",
         description: result.isConfigured ? "Configuration is valid" : "Configuration incomplete",
@@ -70,6 +70,40 @@ export function MailStatusCard() {
       toast({
         title: "Test failed",
         description: "Unable to test email configuration",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEnableTestMode = async () => {
+    try {
+      await apiRequest('/api/mail/enable-test-mode', 'POST');
+      toast({
+        title: "Test mode enabled",
+        description: "System will simulate email processing",
+      });
+      refetch();
+    } catch (error) {
+      toast({
+        title: "Failed to enable test mode",
+        description: "An error occurred",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDisableTestMode = async () => {
+    try {
+      await apiRequest('/api/mail/disable-test-mode', 'POST');
+      toast({
+        title: "Test mode disabled",
+        description: "Returned to normal operation",
+      });
+      refetch();
+    } catch (error) {
+      toast({
+        title: "Failed to disable test mode",
+        description: "An error occurred",
         variant: "destructive",
       });
     }
@@ -146,6 +180,34 @@ export function MailStatusCard() {
           <div>Port: {mailStatus.config.port || "N/A"}</div>
           <div>User: {mailStatus.config.user || "Not configured"}</div>
           <div>Secure: {mailStatus.config.secure ? "Yes" : "No"}</div>
+          {mailStatus.testMode && (
+            <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+              <div className="text-yellow-600 dark:text-yellow-400 font-medium">Test Mode Active</div>
+              <div className="text-yellow-600 dark:text-yellow-400">Simulating email processing</div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleDisableTestMode}
+                className="mt-1 h-6 text-xs"
+                data-testid="button-disable-test-mode"
+              >
+                Disable Test Mode
+              </Button>
+            </div>
+          )}
+          {!mailStatus.testMode && !mailStatus.connected && (
+            <div className="mt-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleEnableTestMode}
+                className="h-6 text-xs"
+                data-testid="button-enable-test-mode"
+              >
+                Enable Test Mode
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

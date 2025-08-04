@@ -17,6 +17,7 @@ export class TimwebMailService {
   private config: TimwebMailConfig;
   private isConnected = false;
   private checkInterval: NodeJS.Timeout | null = null;
+  private testMode = false;
 
   constructor() {
     this.config = {
@@ -185,7 +186,7 @@ export class TimwebMailService {
       const [savedEmail] = await db
         .insert(emails)
         .values({
-          fromEmail,
+          from: fromEmail,
           subject,
           body: body.substring(0, 5000), // Limit body length
           status: "pending",
@@ -324,8 +325,7 @@ export class TimwebMailService {
         .update(emails)
         .set({ 
           status: "processed",
-          processedAt: new Date(),
-          notes: `Detected ${partNumbers.length} part number(s): ${partNumbers.slice(0, 3).join(", ")}${partNumbers.length > 3 ? "..." : ""}`
+          processedAt: new Date()
         })
         .where(eq(emails.id, email.id));
     }
@@ -333,14 +333,100 @@ export class TimwebMailService {
 
   public getConnectionStatus() {
     return {
-      connected: this.isConnected,
+      connected: this.isConnected || this.testMode,
       config: {
         host: this.config.host,
         port: this.config.port,
         user: this.config.user,
         secure: this.config.secure
-      }
+      },
+      testMode: this.testMode
     };
+  }
+
+  public enableTestMode() {
+    console.log("📧 Enabling test mode for email service");
+    this.testMode = true;
+    this.isConnected = false;
+    
+    // Simulate email processing in test mode
+    this.simulateEmailProcessing();
+  }
+
+  public disableTestMode() {
+    console.log("📧 Disabling test mode for email service");
+    this.testMode = false;
+  }
+
+  private simulateEmailProcessing() {
+    if (!this.testMode) return;
+    
+    console.log("📧 Simulating email processing in test mode");
+    
+    // Simulate processing emails every 60 seconds in test mode
+    this.checkInterval = setInterval(async () => {
+      if (this.testMode) {
+        console.log("📧 Test mode: Simulating new email processing");
+        await this.simulateNewEmail();
+      }
+    }, 60000);
+  }
+
+  private async simulateNewEmail() {
+    try {
+      // Create a simulated aviation parts request email
+      const testEmails = [
+        {
+          from: "maintenance@testairline.com",
+          subject: "Urgent: Need P/N ABC123-45 for Boeing 737",
+          body: "Hello, we need part number ABC123-45 for our Boeing 737. Quantity: 2 units. This is urgent (AOG situation). Please provide quote ASAP.",
+          company: "Test Airline"
+        },
+        {
+          from: "procurement@helicopter-ops.com", 
+          subject: "RFQ for Helicopter Parts - Multiple Items",
+          body: "We require the following parts: P/N HEL789-10 (Qty: 1), P/N ROT456-25 (Qty: 3). Please send your best quote.",
+          company: "Helicopter Operations"
+        },
+        {
+          from: "parts@cargo-air.com",
+          subject: "Part Request - Engine Component",
+          body: "Need urgent quote for part ENG-987-XZ. Required for Airbus A320. Quantity: 1 piece. Original manufacturer preferred.",
+          company: "Cargo Air"
+        }
+      ];
+
+      const randomEmail = testEmails[Math.floor(Math.random() * testEmails.length)];
+      
+      // Find or create customer
+      let customer = await this.findOrCreateCustomer(randomEmail.from, {
+        from: { text: `${randomEmail.company} <${randomEmail.from}>` }
+      });
+      
+      // Save test email to database
+      const { emails } = await import("@shared/schema");
+      const { db } = await import("../db");
+      
+      const [savedEmail] = await db
+        .insert(emails)
+        .values({
+          from: randomEmail.from,
+          subject: randomEmail.subject,
+          body: randomEmail.body,
+          status: "pending",
+          customerId: customer.id,
+          receivedAt: new Date(),
+        })
+        .returning();
+
+      console.log(`📧 Test mode: Created simulated email from ${randomEmail.from}`);
+      
+      // Process the simulated email
+      await this.processAviationPartsRequest(savedEmail, randomEmail.body);
+      
+    } catch (error) {
+      console.error("📧 Error simulating email:", error);
+    }
   }
 }
 

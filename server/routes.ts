@@ -329,5 +329,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/mail/enable-test-mode", async (req, res) => {
+    try {
+      timwebMailService.enableTestMode();
+      res.json({ message: "Test mode enabled", status: "test_active" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to enable test mode" });
+    }
+  });
+
+  app.post("/api/mail/disable-test-mode", async (req, res) => {
+    try {
+      timwebMailService.disableTestMode();
+      res.json({ message: "Test mode disabled", status: "test_inactive" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to disable test mode" });
+    }
+  });
+
   return httpServer;
 }
