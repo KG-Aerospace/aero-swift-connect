@@ -48,7 +48,7 @@ export default function CustomerRequests() {
         description: "The email has been assigned to you",
       });
       // Switch to In Progress tab
-      setActiveTab("inprogress");
+      setActiveTab("in-progress");
     },
     onError: () => {
       toast({
@@ -96,9 +96,11 @@ export default function CustomerRequests() {
     !email.processed && !email.assignedToUserId
   ) : [];
 
+  console.log('myAssignedEmails:', myAssignedEmails);
   const myInProgressEmails = Array.isArray(myAssignedEmails) ? myAssignedEmails.filter((email: any) => 
     !email.processed
   ) : [];
+  console.log('myInProgressEmails:', myInProgressEmails);
 
   const processedEmails = Array.isArray(emails) ? emails.filter((email: any) => 
     email.processed

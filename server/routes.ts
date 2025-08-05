@@ -48,6 +48,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Authentication middleware
   const requireAuth = async (req: any, res: any, next: any) => {
+    console.log('RequireAuth check - session:', req.session);
+    console.log('RequireAuth check - userId:', req.session?.userId);
     if (!req.session?.userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -457,9 +459,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/emails/my-assigned", requireAuth, async (req, res) => {
     try {
       const userId = req.session!.userId!;
+      console.log('Fetching assigned emails for userId:', userId);
       const emails = await storage.getAssignedEmails(userId);
+      console.log('Found assigned emails:', emails.length);
       res.json(emails);
     } catch (error) {
+      console.error('Error fetching assigned emails:', error);
       res.status(500).json({ message: "Failed to fetch assigned emails" });
     }
   });
