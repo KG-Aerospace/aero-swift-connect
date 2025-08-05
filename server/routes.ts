@@ -743,14 +743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Email not found" });
       }
 
-      console.log(`📧 EMAIL DEBUG:`, {
-        id: email.id,
-        subject: email.subject,
-        hasContent: !!email.content,
-        hasHtmlContent: !!email.htmlContent,
-        contentLength: email.content?.length || 0,
-        htmlContentLength: email.htmlContent?.length || 0
-      });
+
 
       // Import AI analysis service
       const { AIAnalysisService } = await import("./services/aiAnalysisService");
@@ -759,7 +752,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Analyze email content - use content field, fallback to htmlContent, then empty string
       const emailContent = email.content || email.htmlContent || "";
       if (!emailContent.trim()) {
-        console.log(`📧 NO CONTENT TO ANALYZE for email ${email.id}`);
+  
         return res.json({ 
           success: true, 
           message: "Email has no content to analyze",
@@ -767,8 +760,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log(`📧 ANALYZING EMAIL ${email.id}: subject="${email.subject}", content length=${emailContent.length}`);
-      console.log(`📧 EMAIL CONTENT PREVIEW:`, emailContent.substring(0, 500));
+
       
       const extractedParts = await aiService.analyzeEmailContent(
         emailContent,
@@ -784,7 +776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log(`🤖 AI found ${extractedParts.length} parts for email ${email.id}`);
+
 
       // Create draft orders from extracted parts
       const createdIds = await aiService.createDraftOrdersFromAnalysis(

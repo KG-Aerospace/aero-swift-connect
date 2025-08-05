@@ -230,14 +230,16 @@ export class TimwebMailService {
       const [savedEmail] = await db
         .insert(emails)
         .values({
+          messageId: parsed.messageId,
           fromEmail: fromEmail,
+          toEmail: parsed.to?.text || '',
           subject,
-          body: body ? body.substring(0, 5000) : '', // Ensure body is never null
-          bodyHtml: bodyHtml ? bodyHtml.substring(0, 50000) : '', // Ensure bodyHtml is never null
-          attachments: attachmentData.length > 0 ? attachmentData : null,
-          status: "pending",
+          content: body ? body.substring(0, 5000) : '', // Use 'content' field
+          htmlContent: bodyHtml ? bodyHtml.substring(0, 50000) : '', // Use 'htmlContent' field
+          attachments: attachmentData.length > 0 ? attachmentData : [],
+          processed: false,
           customerId: customer.id,
-          receivedAt: new Date(),
+          receivedAt: parsed.date || new Date(),
         })
         .returning();
 

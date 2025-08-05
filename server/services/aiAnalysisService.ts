@@ -278,11 +278,7 @@ export class AIAnalysisService {
   async analyzeEmailContent(emailBody: string, emailSubject: string): Promise<ExtractedPart[]> {
     try {
       const userContent = `Subject: ${emailSubject}\n\n${emailBody}`;
-      console.log('🤖 AI Input:', {
-        subject: emailSubject,
-        bodyLength: emailBody.length,
-        userContentPreview: userContent.substring(0, 300)
-      });
+
 
       // Call Deepseek API
       const response = await fetch('https://api.deepseek.com/chat/completions', {
@@ -317,11 +313,7 @@ export class AIAnalysisService {
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content;
 
-      console.log('🤖 AI Response:', {
-        hasContent: !!content,
-        contentLength: content?.length || 0,
-        content: content
-      });
+
 
       if (!content) {
         console.error('No content in AI response');
@@ -330,15 +322,22 @@ export class AIAnalysisService {
 
       // Parse JSON response
       try {
-        const parsed = JSON.parse(content);
-        console.log('🤖 Parsed AI Response:', parsed);
+        // Remove markdown code blocks if present
+        let cleanContent = content;
+        if (content.includes('```json')) {
+          cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        } else if (content.includes('```')) {
+          cleanContent = content.replace(/```\n?/g, '').trim();
+        }
+        
+        const parsed = JSON.parse(cleanContent);
+
         
         if (!Array.isArray(parsed)) {
           console.error('AI response is not an array:', typeof parsed, parsed);
           return [];
         }
         
-        console.log(`🤖 Successfully extracted ${parsed.length} parts`);
         return parsed;
       } catch (parseError) {
         console.error('Failed to parse AI response:', parseError);
