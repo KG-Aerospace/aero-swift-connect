@@ -205,7 +205,7 @@ export default function CustomerRequests() {
           </div>
           
           {/* Assigned emails section - shows all emails being worked on */}
-          {Array.isArray(emails) && emails.filter((email: any) => email.assignedToUserId && !email.processed).length > 0 && (
+          {Array.isArray(emails) && emails.filter((email: any) => email.assignedToUserId).length > 0 && (
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle className="text-sm font-medium">Currently Being Worked On</CardTitle>
@@ -213,7 +213,7 @@ export default function CustomerRequests() {
               <CardContent>
                 <div className="space-y-2">
                   {emails
-                    .filter((email: any) => email.assignedToUserId && !email.processed)
+                    .filter((email: any) => email.assignedToUserId)
                     .map((email: any) => (
                       <div key={email.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -251,36 +251,29 @@ export default function CustomerRequests() {
           <div className="text-lg font-semibold mb-4">
             My Assigned Emails ({user?.name})
           </div>
-          {assignedDrafts.length === 0 ? (
+          {myInProgressEmails.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center text-gray-500">
-                No draft orders for your assigned emails
+                No assigned emails
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-4">
-              {/* Group drafts by email */}
-              {Object.entries(
-                assignedDrafts.reduce((groups: any, draft: any) => {
-                  const emailId = draft.emailId;
-                  if (!groups[emailId]) {
-                    groups[emailId] = {
-                      email: draft.email || myInProgressEmails.find((e: any) => e.id === emailId),
-                      drafts: []
-                    };
-                  }
-                  groups[emailId].drafts.push(draft);
-                  return groups;
-                }, {})
-              ).map(([emailId, group]: [string, any]) => (
-                <DraftOrderGroupCard
-                  key={emailId}
-                  email={group.email}
-                  drafts={group.drafts}
-                  showTakeToWork={false}
-                  isInProgress={true}
-                />
-              ))}
+              {/* Show all assigned emails */}
+              {myInProgressEmails.map((email: any) => {
+                // Get drafts for this email
+                const emailDrafts = assignedDrafts.filter((draft: any) => draft.emailId === email.id);
+                
+                return (
+                  <DraftOrderGroupCard
+                    key={email.id}
+                    email={email}
+                    drafts={emailDrafts}
+                    showTakeToWork={false}
+                    isInProgress={true}
+                  />
+                );
+              })}
             </div>
           )}
         </TabsContent>
