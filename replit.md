@@ -68,6 +68,10 @@ Preferred communication style: Simple, everyday language.
   - Successfully processing 17+ draft orders from pending emails
   - Orders page now shows only verified orders (manual review completed)
   - Dashboard statistics updated to show draft orders and processed emails correctly
+- **CR Number and Requisition Number Logic**: Updated to follow proper business logic
+  - CR Number: One unique number per email (all parts from same email share same CR Number)
+  - Requisition Number: Unique number for each individual part globally
+  - Orders page displays Requisition Number in header and CR Number in description
 
 ### August 5, 2025 - Simplified Number Format Update
 - **CR Number Format Change**: Updated from complex timestamp format to simplified `CR-00001` pattern (5-digit unique numbers)

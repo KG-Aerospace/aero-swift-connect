@@ -164,10 +164,10 @@ export default function Orders() {
                   <Package className="w-5 h-5 text-gray-500" />
                   <div>
                     <CardTitle className="text-lg">
-                      {order.positionId || order.orderNumber}
+                      {order.requisitionNumber || order.positionId || order.orderNumber}
                     </CardTitle>
                     <p className="text-sm text-gray-500">
-                      Part Number: {order.partNumber}
+                      Part Number: {order.partNumber} | CR: {order.crNumber}
                     </p>
                   </div>
                 </div>

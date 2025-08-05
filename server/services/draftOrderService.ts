@@ -17,6 +17,37 @@ class DraftOrderService {
     lineNumber?: number;
   }): Promise<DraftOrder | null> {
     try {
+      // First check if we already have drafts for this email to reuse CR Number
+      const existingDrafts = await db
+        .select({ crNumber: draftOrders.crNumber })
+        .from(draftOrders)
+        .where(eq(draftOrders.emailId, data.emailId))
+        .limit(1);
+      
+      let crNumber = "";
+      let requisitionNumber = "";
+      
+      if (existingDrafts.length > 0 && existingDrafts[0].crNumber) {
+        // Use existing CR Number for this email
+        crNumber = existingDrafts[0].crNumber;
+      } else {
+        // Generate new CR Number for this email (count unique emails with drafts)
+        const [emailCountResult] = await db
+          .select({ count: sql<number>`count(distinct email_id)` })
+          .from(draftOrders);
+        
+        const emailNumber = (emailCountResult.count || 0) + 1;
+        crNumber = `CR-${emailNumber.toString().padStart(5, '0')}`;
+      }
+      
+      // Generate unique Requisition Number (count all draft orders)
+      const [reqCountResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(draftOrders);
+      
+      const reqNumber = (reqCountResult.count || 0) + 1;
+      requisitionNumber = `ID-${reqNumber.toString().padStart(5, '0')}`;
+      
       const [draft] = await db
         .insert(draftOrders)
         .values({
@@ -30,9 +61,9 @@ class DraftOrderService {
           status: "pending",
           notes: "",
           customerReference: data.emailFrom || "",  // Email sender
-          crNumber: "",  // Will be set to ID after creation
-          requisitionNumber: data.lineNumber ? data.lineNumber.toString() : "1",  // Line number
-          positionId: "", // Will be generated in ID000034 format
+          crNumber: crNumber,  // One per email
+          requisitionNumber: requisitionNumber,  // Unique per item
+          positionId: requisitionNumber, // Same as requisition for consistency
           customerRequestDate: data.emailDate || new Date(),  // Email date
           uom: "EA",
           cheapExp: "CHEAP",
@@ -41,30 +72,6 @@ class DraftOrderService {
           comment: "",
         })
         .returning();
-      
-      // Update with CR Number (database ID) and Position ID
-      if (draft) {
-        // Get count of existing drafts to generate position ID
-        const [countResult] = await db
-          .select({ count: sql<number>`count(*)` })
-          .from(draftOrders);
-        
-        const positionNumber = (countResult.count || 0) + 1;
-        const positionId = `ID-${positionNumber.toString().padStart(5, '0')}`;
-        
-        // Generate CR Number with 5 digits
-        const crNumber = `CR-${positionNumber.toString().padStart(5, '0')}`;
-        
-        const [updated] = await db
-          .update(draftOrders)
-          .set({ 
-            crNumber: crNumber,
-            positionId: positionId 
-          })
-          .where(eq(draftOrders.id, draft.id))
-          .returning();
-        return updated;
-      }
       
       return draft;
     } catch (error) {
