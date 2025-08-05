@@ -1,149 +1,134 @@
-// Script to reprocess all emails with new airline-specific parsers
+// Script to reprocess all emails with improved airline parsers
 import { db } from "../db";
-import { emails, orders, activities } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { emails, customers, orders, activities } from "@shared/schema";
+import { eq, desc } from "drizzle-orm";
 import { airlineParserService } from "../services/airlineParserService";
+import { orderCreationService } from "../services/orderCreationService";
 
-async function deleteAllOrders() {
-  console.log("🗑️  Deleting all existing orders...");
+async function reprocessEmails() {
+  console.log("🔄 Starting email reprocessing with improved parsers...\n");
   
-  // Delete all orders
-  const deletedOrders = await db.delete(orders).returning();
-  console.log(`🗑️  Deleted ${deletedOrders.length} orders`);
-  
-  // Log activity
-  await db.insert(activities).values({
-    type: "bulk_delete",
-    description: `Deleted ${deletedOrders.length} orders for reprocessing`,
-    entityType: "order",
-    createdAt: new Date()
-  });
-  
-  return deletedOrders.length;
-}
-
-async function reprocessAllEmails() {
-  console.log("📧 Fetching all emails for reprocessing...");
-  
-  // Get all emails
-  const allEmails = await db.select().from(emails);
-  console.log(`📧 Found ${allEmails.length} emails to reprocess`);
-  
-  let totalOrdersCreated = 0;
-  const airlineStats: Record<string, number> = {};
-  
-  for (const email of allEmails) {
-    console.log(`\n📧 Processing email from: ${email.fromEmail}`);
-    console.log(`   Subject: ${email.subject}`);
+  try {
+    // Get all emails from database
+    const allEmails = await db
+      .select()
+      .from(emails)
+      .innerJoin(customers, eq(emails.customerId, customers.id))
+      .orderBy(desc(emails.receivedAt));
     
-    // Use airline-specific parser
-    const parsingResult = airlineParserService.parseEmailByAirline(email, email.body);
+    console.log(`📧 Found ${allEmails.length} total emails to process\n`);
     
-    if (parsingResult.airline) {
-      airlineStats[parsingResult.airline] = (airlineStats[parsingResult.airline] || 0) + 1;
-    }
+    // Statistics
+    let totalProcessed = 0;
+    let totalAviationEmails = 0;
+    let totalOrdersCreated = 0;
+    let totalPartsFound = 0;
+    const airlineStats: Record<string, number> = {};
     
-    console.log(`   ✈️  Detected airline: ${parsingResult.airline || "Unknown"}`);
-    console.log(`   📦 Found ${parsingResult.orders.length} parts`);
-    
-    if (parsingResult.isAviationRequest && parsingResult.orders.length > 0) {
-      // Update email status
-      await db
-        .update(emails)
-        .set({ 
-          status: "processing",
-          processedAt: new Date()
-        })
-        .where(eq(emails.id, email.id));
+    // Process each email
+    for (const emailData of allEmails) {
+      const email = emailData.emails;
+      const customer = emailData.customers;
       
-      // Create orders
-      for (const parsedOrder of parsingResult.orders) {
-        try {
-          const orderNumber = generateOrderNumber();
-          
-          const [newOrder] = await db.insert(orders).values({
-            orderNumber,
-            customerId: email.customerId,
-            emailId: email.id,
-            partNumber: parsedOrder.partNumber,
-            partDescription: parsedOrder.description || "",
-            quantity: parsedOrder.quantity,
-            urgencyLevel: parsedOrder.priority === "URGENT" ? "critical" : "normal",
-            status: "pending",
-            notes: `Airline: ${parsingResult.airline || "Unknown"}, Condition: ${parsedOrder.condition}, Priority: ${parsedOrder.priority}`,
-          }).returning();
-          
-          console.log(`   ✅ Created order ${orderNumber} for part ${parsedOrder.partNumber}`);
-          totalOrdersCreated++;
-        } catch (error) {
-          console.error(`   ❌ Error creating order for part ${parsedOrder.partNumber}:`, error);
+      totalProcessed++;
+      
+      // Parse email with airline-specific parser
+      const parseResult = airlineParserService.parseEmailByAirline(email, email.body);
+      
+      // Update airline statistics
+      const airline = parseResult.airline || "Unknown";
+      airlineStats[airline] = (airlineStats[airline] || 0) + 1;
+      
+      if (parseResult.isAviationRequest && parseResult.orders.length > 0) {
+        totalAviationEmails++;
+        totalPartsFound += parseResult.orders.length;
+        
+        console.log(`✈️  Processing email from ${customer.company} (${airline})`);
+        console.log(`   Subject: ${email.subject.substring(0, 60)}...`);
+        console.log(`   Parts found: ${parseResult.orders.length}`);
+        
+        // Create orders for each part
+        for (const orderData of parseResult.orders) {
+          try {
+            const newOrder = await orderCreationService.createOrder({
+              emailId: email.id,
+              customerId: customer.id,
+              partNumber: orderData.partNumber,
+              quantity: orderData.quantity,
+              condition: orderData.condition || "NE",
+              priority: orderData.priority || "STANDARD",
+              description: orderData.description || "",
+            });
+            
+            if (newOrder) {
+              totalOrdersCreated++;
+              console.log(`   ✅ Created order ${newOrder.orderNumber} for part ${orderData.partNumber}`);
+            }
+          } catch (error: any) {
+            console.error(`   ❌ Error creating order for part ${orderData.partNumber}:`, error.message);
+          }
         }
       }
       
-      // Update email status to processed
-      await db
-        .update(emails)
-        .set({ 
-          status: "processed",
-          processedAt: new Date()
-        })
-        .where(eq(emails.id, email.id));
-    } else {
-      // Update email status to processed even if no parts found
-      await db
-        .update(emails)
-        .set({ 
-          status: parsingResult.isAviationRequest ? "processed" : "pending",
-          processedAt: parsingResult.isAviationRequest ? new Date() : null
-        })
-        .where(eq(emails.id, email.id));
+      // Progress update every 100 emails
+      if (totalProcessed % 100 === 0) {
+        console.log(`\n📊 Progress: ${totalProcessed}/${allEmails.length} emails processed`);
+        console.log(`   Aviation emails: ${totalAviationEmails}`);
+        console.log(`   Orders created: ${totalOrdersCreated}`);
+        console.log(`   Parts found: ${totalPartsFound}\n`);
+      }
     }
+    
+    // Final statistics
+    console.log("\n" + "=".repeat(60));
+    console.log("📊 FINAL STATISTICS");
+    console.log("=".repeat(60));
+    console.log(`📧 Total emails processed: ${totalProcessed}`);
+    console.log(`✈️  Aviation-related emails: ${totalAviationEmails}`);
+    console.log(`📦 Total orders created: ${totalOrdersCreated}`);
+    console.log(`🔧 Total parts detected: ${totalPartsFound}`);
+    console.log(`📈 Average parts per aviation email: ${(totalPartsFound / (totalAviationEmails || 1)).toFixed(2)}`);
+    
+    console.log("\n✈️  Airline Distribution:");
+    Object.entries(airlineStats)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([airline, count]) => {
+        console.log(`   ${airline}: ${count} emails`);
+      });
+    
+    // Log activity
+    await db.insert(activities).values({
+      type: "bulk_processing",
+      entityType: "email",
+      entityId: null,
+      userId: null,
+      description: `Reprocessed ${totalProcessed} emails with improved parsers. Created ${totalOrdersCreated} orders from ${totalPartsFound} detected parts.`,
+      metadata: {
+        totalEmails: totalProcessed,
+        aviationEmails: totalAviationEmails,
+        ordersCreated: totalOrdersCreated,
+        partsFound: totalPartsFound,
+        airlineStats,
+      },
+    });
+    
+    console.log("\n✅ Email reprocessing completed successfully!");
+    
+  } catch (error) {
+    console.error("❌ Error during reprocessing:", error);
+    throw error;
   }
-  
-  return { totalOrdersCreated, airlineStats };
-}
-
-function generateOrderNumber(): string {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
-  return `ORD-${year}${month}${day}-${random}`;
 }
 
 // Main execution
 async function main() {
   try {
-    console.log("🚀 Starting email reprocessing with airline-specific parsers...\n");
-    
-    // Step 1: Delete all orders
-    const deletedCount = await deleteAllOrders();
-    
-    // Step 2: Reprocess all emails
-    const { totalOrdersCreated, airlineStats } = await reprocessAllEmails();
-    
-    // Summary
-    console.log("\n📊 REPROCESSING COMPLETE!");
-    console.log("=" .repeat(50));
-    console.log(`🗑️  Deleted orders: ${deletedCount}`);
-    console.log(`✅ Created orders: ${totalOrdersCreated}`);
-    console.log("\n✈️  Airlines detected:");
-    
-    for (const [airline, count] of Object.entries(airlineStats)) {
-      console.log(`   ${airline}: ${count} emails`);
-    }
-    
-    // Get final stats
-    const finalOrderCount = await db.select().from(orders);
-    console.log(`\n📦 Total orders in database: ${finalOrderCount.length}`);
-    
+    await reprocessEmails();
     process.exit(0);
   } catch (error) {
-    console.error("❌ Error during reprocessing:", error);
+    console.error("❌ Fatal error:", error);
     process.exit(1);
   }
 }
 
-// Run the script
 main();

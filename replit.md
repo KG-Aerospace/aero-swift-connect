@@ -26,6 +26,18 @@ Preferred communication style: Simple, everyday language.
 - **Airline-Specific Parsing**: Implemented comprehensive airline detection by email domain with company-specific parsers
 - **Enhanced Order Creation**: Orders now created using tailored parsing logic for each airline company (Nordwind, S7, UTair, Aeroflot, etc.)
 
+### August 5, 2025 - Part Number Detection Improvements
+- **Enhanced Airline Parsers**: Improved part number detection algorithms for all airline-specific parsers
+  - Nordwind: Added standalone part number detection and improved pattern matching for formats like "9104A0005-01"
+  - S7 Airlines: Added support for Cyrillic patterns and mixed format part numbers like "2313M591-1"
+  - UTair: Enhanced structured pattern detection for "Item: X Qty: Y" format
+  - All parsers now better handle aviation-specific terms like "SENSOR", "VALVE", "UNIT"
+- **Part Number Validation**: Added stricter validation to exclude:
+  - Encoded/base64 strings (length > 30 or containing '/' with length > 20)
+  - Common false positives (dates, simple codes, currency abbreviations)
+- **Order Creation Service**: Created dedicated service with duplicate detection to prevent multiple orders for same part/email
+- **Order Number Generation**: Improved uniqueness by including timestamp and random components (format: ORD-YYYYMMDD-TTTTTTRRR)
+
 ## System Architecture
 
 ### Frontend Architecture

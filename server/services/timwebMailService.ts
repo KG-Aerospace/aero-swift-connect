@@ -414,8 +414,9 @@ export class TimwebMailService {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
-    return `ORD-${year}${month}${day}-${random}`;
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
+    return `ORD-${year}${month}${day}-${timestamp}${random}`;
   }
 
   public getConnectionStatus() {

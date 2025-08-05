@@ -127,64 +127,44 @@ export class AirlineParserService {
   private parseNordwindEmail(body: string): { orders: ParsedOrder[]; isAviationRequest: boolean } {
     const orders: ParsedOrder[] = [];
     
-    // Nordwind specific patterns
-    const patterns = [
-      // Pattern: DRIVE UNIT ASSY-ANT P/N 622-5135-802 recovery
-      /(?:P\/N|PN|Part\s*Number)[:\s]*([A-Z0-9\-]+)(?:\s+recovery)?/gi,
-      // Pattern: Request for P/N: 123-456-789
-      /Request\s+for\s+P\/N[:\s]*([A-Z0-9\-]+)/gi,
-      // Pattern: NWA//NTF with part codes
-      /NWA\/\/NTF.*?(?:P\/N|PN)?[:\s]*([A-Z0-9\-]+)/gi,
-    ];
-    
+    // Split body into lines for better parsing
+    const lines = body.split(/\n/);
     const foundParts = new Set<string>();
     
-    for (const pattern of patterns) {
-      const matches = Array.from(body.matchAll(pattern));
-      for (const match of matches) {
-        if (match[1]) {
-          const partNumber = match[1].trim();
-          if (partNumber.length >= 3 && !foundParts.has(partNumber)) {
-            foundParts.add(partNumber);
-            
-            // Extract quantity for this part
-            const quantity = this.extractQuantityNearPart(body, partNumber);
-            const condition = this.extractCondition(body);
-            const priority = body.match(/recovery|urgent|AOG/i) ? "URGENT" : "STANDARD";
-            
-            orders.push({
-              partNumber,
-              quantity,
-              condition,
-              priority,
-              description: this.extractDescription(body, partNumber),
-            });
-          }
-        }
+    // Method 1: Look for standalone part numbers (like "9104A0005-01")
+    const standalonePattern = /^([A-Z0-9]{2,}[\-]?[A-Z0-9\-]+)$/gm;
+    const standaloneMatches = Array.from(body.matchAll(standalonePattern));
+    
+    for (const match of standaloneMatches) {
+      const partNumber = match[1].trim();
+      if (this.isValidPartNumber(partNumber) && !foundParts.has(partNumber)) {
+        foundParts.add(partNumber);
+        
+        // Look for quantity near the part number
+        const quantity = this.extractQuantityNearPart(body, partNumber);
+        const description = this.extractDescription(body, partNumber);
+        
+        orders.push({
+          partNumber,
+          quantity,
+          condition: this.extractCondition(body),
+          priority: body.match(/recovery|urgent|AOG|critical/i) ? "URGENT" : "STANDARD",
+          description: description || "Aviation part",
+        });
       }
     }
     
-    return { 
-      orders, 
-      isAviationRequest: orders.length > 0 || /aircraft|aviation|part|component/i.test(body)
-    };
-  }
-
-  /**
-   * S7 Airlines specific parser
-   */
-  private parseS7Email(body: string): { orders: ParsedOrder[]; isAviationRequest: boolean } {
-    const orders: ParsedOrder[] = [];
-    
-    // S7 specific patterns (often use Cyrillic)
+    // Method 2: Traditional P/N patterns
     const patterns = [
-      // Standard P/N pattern
-      /(?:P\/N|PN|Part\s*Number)[:\s]*([A-Z0-9\-]+)/gi,
-      // Pattern with dashes and mixed format
-      /\b([A-Z]{2,4}[\-\s]?\d{3,6}[\-\s]?[A-Z0-9]{0,6})\b/g,
+      // Pattern: P/N 622-5135-802
+      /(?:P\/N|PN|Part\s*Number|Part\s*No)[:\s]*([A-Z0-9\-]+)/gi,
+      // Pattern: Request for P/N: 123-456-789
+      /Request\s+for\s+P\/N[:\s]*([A-Z0-9\-]+)/gi,
+      // Pattern: NWA//RQ-0297418//B737 followed by part
+      /NWA\/\/.*?([A-Z0-9]{3,}[\-][A-Z0-9\-]+)/gi,
+      // Pattern for part codes in format XXX-XXX-XXX or similar
+      /\b([A-Z0-9]{3,}[\-][A-Z0-9]{3,}[\-]?[A-Z0-9]*)\b/g,
     ];
-    
-    const foundParts = new Set<string>();
     
     for (const pattern of patterns) {
       const matches = Array.from(body.matchAll(pattern));
@@ -194,12 +174,16 @@ export class AirlineParserService {
           if (this.isValidPartNumber(partNumber) && !foundParts.has(partNumber)) {
             foundParts.add(partNumber);
             
+            const quantity = this.extractQuantityNearPart(body, partNumber);
+            const condition = this.extractCondition(body);
+            const priority = body.match(/recovery|urgent|AOG|critical/i) ? "URGENT" : "STANDARD";
+            
             orders.push({
               partNumber,
-              quantity: this.extractQuantityNearPart(body, partNumber),
-              condition: this.extractCondition(body),
-              priority: body.match(/срочно|urgent|AOG/i) ? "URGENT" : "STANDARD",
-              description: this.extractDescription(body, partNumber),
+              quantity,
+              condition,
+              priority,
+              description: this.extractDescription(body, partNumber) || "Aviation part",
             });
           }
         }
@@ -208,7 +192,55 @@ export class AirlineParserService {
     
     return { 
       orders, 
-      isAviationRequest: orders.length > 0 || /aircraft|самолет|part|запчасть/i.test(body)
+      isAviationRequest: orders.length > 0 || /aircraft|aviation|part|component|sensor|valve|unit/i.test(body)
+    };
+  }
+
+  /**
+   * S7 Airlines specific parser
+   */
+  private parseS7Email(body: string): { orders: ParsedOrder[]; isAviationRequest: boolean } {
+    const orders: ParsedOrder[] = [];
+    
+    // S7 specific patterns (often use Cyrillic and specific formats)
+    const patterns = [
+      // Standard P/N pattern
+      /(?:P\/N|PN|Part\s*Number|Part\s*No|Номер\s*детали)[:\s]*([A-Z0-9\-]+)/gi,
+      // Pattern: S7//RQ-XXXXXX
+      /S7\/\/RQ[\-]?\d+.*?([A-Z0-9]{3,}[\-][A-Z0-9\-]+)/gi,
+      // Pattern with dashes and mixed format (like 2313M591-1)
+      /\b([A-Z0-9]{2,}[A-Z]\d{3,}[\-]\d+[A-Z0-9]*)\b/g,
+      // Pattern for format like PLT2SM, TQ 430772
+      /\b([A-Z]{2,4}[\s]?\d{4,6}|[A-Z]{3,6}\d{1,3}[A-Z]?)\b/g,
+      // Russian patterns
+      /деталь[:\s]*([A-Z0-9\-]+)/gi,
+    ];
+    
+    const foundParts = new Set<string>();
+    
+    for (const pattern of patterns) {
+      const matches = Array.from(body.matchAll(pattern));
+      for (const match of matches) {
+        if (match[1]) {
+          const partNumber = match[1].trim().replace(/\s+/g, '');
+          if (this.isValidPartNumber(partNumber) && !foundParts.has(partNumber)) {
+            foundParts.add(partNumber);
+            
+            orders.push({
+              partNumber,
+              quantity: this.extractQuantityNearPart(body, partNumber),
+              condition: this.extractCondition(body),
+              priority: body.match(/срочно|urgent|AOG|критично/i) ? "URGENT" : "STANDARD",
+              description: this.extractDescription(body, partNumber) || "Aviation part",
+            });
+          }
+        }
+      }
+    }
+    
+    return { 
+      orders, 
+      isAviationRequest: orders.length > 0 || /aircraft|самолет|part|запчасть|деталь|компонент/i.test(body)
     };
   }
 
@@ -385,14 +417,23 @@ export class AirlineParserService {
     // Basic validation
     if (!partNumber || partNumber.length < 3) return false;
     
-    // Must contain both letters and numbers
-    if (!/[A-Z]/i.test(partNumber) || !/\d/.test(partNumber)) return false;
+    // Exclude too long or suspicious patterns
+    if (partNumber.length > 30) return false;
+    if (partNumber.includes('/') && partNumber.length > 20) return false;
+    
+    // Must contain both letters and numbers (with some exceptions)
+    const hasLetter = /[A-Z]/i.test(partNumber);
+    const hasNumber = /\d/.test(partNumber);
+    
+    // Some valid part numbers might be all numbers (like 5487FC)
+    if (!hasLetter && !hasNumber) return false;
     
     // Exclude common false positives
     const excludePatterns = [
       /^(RFQ|REQ|QTY|FOB|USD|EUR|RUB)\d*$/i,
       /^\d{1,2}[\-\/]\d{1,2}[\-\/]\d{2,4}$/,  // Dates
       /^[A-Z]{1,2}\d{1,2}$/,  // Simple codes like A1, B2
+      /^[A-Za-z0-9\/\+]{40,}$/,  // Base64 or encoded strings
     ];
     
     for (const pattern of excludePatterns) {
