@@ -37,10 +37,11 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
     fromEmail: string;
     subject: string;
     body: string;
+    bodyHtml?: string;
     receivedAt: string;
     status: string;
   }>({
-    queryKey: [`/api/emails/${email.id}`],
+    queryKey: ["/api/emails", email.id],
     enabled: !!email.id && showEmailContent,
   });
 
@@ -206,13 +207,20 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
                     <div><strong>Received:</strong> {emailData.receivedAt ? format(new Date(emailData.receivedAt), 'PPpp') : 'Unknown'}</div>
                     <div><strong>Status:</strong> {emailData.status || 'Unknown'}</div>
                   </div>
-                  {emailData.body && (
+                  {(emailData.body || emailData.bodyHtml) && (
                     <div className="mt-3">
                       <strong>Content:</strong>
                       <div className="mt-1 p-3 bg-white dark:bg-gray-900 rounded border max-h-64 overflow-y-auto">
-                        <pre className="whitespace-pre-wrap text-xs font-mono text-gray-800 dark:text-gray-200">
-                          {emailData.body}
-                        </pre>
+                        {emailData.bodyHtml && !emailData.body ? (
+                          <div 
+                            className="prose prose-sm max-w-none dark:prose-invert"
+                            dangerouslySetInnerHTML={{ __html: emailData.bodyHtml }}
+                          />
+                        ) : (
+                          <pre className="whitespace-pre-wrap text-xs font-mono text-gray-800 dark:text-gray-200">
+                            {emailData.body}
+                          </pre>
+                        )}
                       </div>
                     </div>
                   )}
