@@ -9,7 +9,7 @@ import {
   type Activity, type InsertActivity,
   type DraftOrder, type InsertDraftOrder
 } from "@shared/schema";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { eq, desc, count, sql, and, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
@@ -325,23 +325,54 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getEmail(id: string): Promise<Email | undefined> {
+  async getEmail(id: string): Promise<any> {
     try {
-      const result = await db
-        .select({
-          email: emails,
-          customer: customers,
-        })
-        .from(emails)
-        .leftJoin(customers, eq(emails.customerId, customers.id))
-        .where(eq(emails.id, id));
+      // Use pool directly to get all columns including body and body_html
+      const { rows } = await pool.query(`
+        SELECT 
+          e.*,
+          c.id as customer_id,
+          c.name as customer_name,
+          c.email as customer_email,
+          c.phone as customer_phone,
+          c.company as customer_company,
+          c.created_at as customer_created_at
+        FROM emails e
+        LEFT JOIN customers c ON e.customer_id = c.id
+        WHERE e.id = $1
+      `, [id]);
       
-      if (result.length === 0) return undefined;
+      if (rows.length === 0) return undefined;
       
+      const emailRow = rows[0];
+      
+      const customer = emailRow.customer_id ? {
+        id: emailRow.customer_id,
+        name: emailRow.customer_name,
+        email: emailRow.customer_email,
+        phone: emailRow.customer_phone,
+        company: emailRow.customer_company,
+        createdAt: emailRow.customer_created_at,
+      } : undefined;
+      
+      // Return all email fields including body and body_html
       return {
-        ...result[0].email,
-        customer: result[0].customer || undefined,
-      } as any;
+        id: emailRow.id,
+        messageId: emailRow.message_id,
+        subject: emailRow.subject,
+        fromEmail: emailRow.from_email,
+        toEmail: emailRow.to_email,
+        content: emailRow.content || emailRow.body,
+        htmlContent: emailRow.html_content || emailRow.body_html,
+        body: emailRow.body,
+        bodyHtml: emailRow.body_html,
+        receivedAt: emailRow.received_at,
+        processed: emailRow.processed,
+        customerId: emailRow.customer_id,
+        createdAt: emailRow.created_at,
+        attachments: emailRow.attachments,
+        customer,
+      };
     } catch (error) {
       console.error("Error fetching email:", error);
       return undefined;

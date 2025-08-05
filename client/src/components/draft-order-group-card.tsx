@@ -49,10 +49,13 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
     id: string;
     fromEmail: string;
     subject: string;
-    body: string;
+    body?: string;
     bodyHtml?: string;
+    content?: string;
+    htmlContent?: string;
     receivedAt: string;
-    status: string;
+    status?: string;
+    processed?: boolean;
   }>({
     queryKey: ["/api/emails", email.id],
     enabled: !!email.id && showEmailContent,
@@ -239,20 +242,20 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
                     <div><strong>From:</strong> {emailData.fromEmail || 'Unknown'}</div>
                     <div><strong>Subject:</strong> {emailData.subject || 'Unknown'}</div>
                     <div><strong>Received:</strong> {emailData.receivedAt ? format(new Date(emailData.receivedAt), 'PPpp') : 'Unknown'}</div>
-                    <div><strong>Status:</strong> {emailData.status || 'Unknown'}</div>
+                    <div><strong>Status:</strong> {emailData.processed ? 'Processed' : 'Pending'}</div>
                   </div>
-                  {(emailData.body || emailData.bodyHtml) && (
+                  {(emailData.body || emailData.bodyHtml || emailData.content || emailData.htmlContent) && (
                     <div className="mt-3">
                       <strong>Content:</strong>
                       <div className="mt-1 p-3 bg-white dark:bg-gray-900 rounded border max-h-64 overflow-y-auto">
-                        {emailData.bodyHtml && !emailData.body ? (
+                        {(emailData.bodyHtml || emailData.htmlContent) && !(emailData.body || emailData.content) ? (
                           <div 
                             className="prose prose-sm max-w-none dark:prose-invert"
-                            dangerouslySetInnerHTML={{ __html: emailData.bodyHtml }}
+                            dangerouslySetInnerHTML={{ __html: emailData.bodyHtml || emailData.htmlContent || '' }}
                           />
                         ) : (
                           <pre className="whitespace-pre-wrap text-xs font-mono text-gray-800 dark:text-gray-200">
-                            {emailData.body}
+                            {emailData.body || emailData.content || 'No content available'}
                           </pre>
                         )}
                       </div>
