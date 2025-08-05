@@ -12,7 +12,7 @@ import { PartAutocomplete } from "./part-autocomplete";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Check, X, Edit2, Save, Package, User, Calendar, Mail, Clock, Eye, ChevronDown, ChevronUp, Hash, Plus, Sparkles, UserCheck } from "lucide-react";
+import { Check, X, Edit2, Save, Package, User, Calendar, Mail, Clock, Eye, ChevronDown, ChevronUp, Hash, Plus, Sparkles, UserCheck, CheckCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { DraftOrder, AcType, EngineType } from "@/../../shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
@@ -28,9 +28,11 @@ interface DraftOrderGroupCardProps {
   drafts: (DraftOrder & {
     customer?: { name: string; company: string | null } | null;
   })[];
+  showTakeToWork?: boolean;
+  isInProgress?: boolean;
 }
 
-export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps) {
+export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isInProgress = false }: DraftOrderGroupCardProps) {
   const [showEmailContent, setShowEmailContent] = useState(false);
   const [editingDrafts, setEditingDrafts] = useState<Record<string, any>>({});
   const [rejectionDialogOpen, setRejectionDialogOpen] = useState<Record<string, boolean>>({});
@@ -53,6 +55,35 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
   const { data: engineTypes = [] } = useQuery<EngineType[]>({
     queryKey: ["/api/engine-types"],
   });
+
+  // Fetch orders for procurement status when in progress
+  const { data: orders = [] } = useQuery<any[]>({
+    queryKey: ["/api/orders"],
+    enabled: isInProgress,
+  });
+
+  // Get orders related to these drafts by matching CR and requisition numbers
+  const relatedOrders = orders.filter((order: any) => 
+    drafts.some((draft: any) => 
+      (order.crNumber && draft.crNumber && order.crNumber === draft.crNumber) || 
+      (order.requisitionNumber && draft.requisitionNumber && order.requisitionNumber === draft.requisitionNumber)
+    )
+  );
+
+  // Check if all draft items have been converted to orders
+  const allDraftItems = drafts.length;
+  const ordersWithMatchingParts = orders.filter((order: any) => 
+    drafts.some((draft: any) => 
+      order.partNumber === draft.partNumber
+    )
+  );
+  
+  const allItemsAdded = ordersWithMatchingParts.length >= allDraftItems && allDraftItems > 0;
+  
+  // Count how many orders have been requested (have procurement requests)
+  const requestedCount = relatedOrders.filter((order: any) => 
+    order.requested === "Yes" || order.requested === "yes" || order.requested === true
+  ).length;
 
   // Fetch email details when needed
   const { data: emailData, isLoading: isEmailLoading, error: emailError } = useQuery<{
@@ -301,9 +332,24 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
             <Mail className="h-5 w-5 text-blue-500" />
             <CardTitle className="text-lg">{email.subject}</CardTitle>
           </div>
-          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-            {drafts.length} part{drafts.length > 1 ? 's' : ''}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {isInProgress && allItemsAdded && (
+              <Badge className="bg-green-50 text-green-700 border-green-200">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                All items done
+              </Badge>
+            )}
+            
+            {isInProgress && requestedCount > 0 && (
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                {requestedCount} requested
+              </Badge>
+            )}
+            
+            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+              {drafts.length} part{drafts.length > 1 ? 's' : ''}
+            </Badge>
+          </div>
         </div>
         
         <div className="space-y-2">
@@ -330,7 +376,7 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
           {/* Action buttons */}
           <div className="flex items-center justify-between gap-3">
             {/* Take to Work button */}
-            {!email.assignedToUserId && (
+            {showTakeToWork && !email.assignedToUserId && (
               <Button
                 onClick={() => assignEmailMutation.mutate(email.id)}
                 disabled={assignEmailMutation.isPending}

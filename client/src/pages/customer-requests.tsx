@@ -100,8 +100,12 @@ export default function CustomerRequests() {
   // We don't filter by processed status because emails can have draft orders created 
   // but still need to be worked on by the assigned user
   const myInProgressEmails = Array.isArray(myAssignedEmails) ? myAssignedEmails : [];
-  console.log('Debug - myAssignedEmails:', myAssignedEmails);
-  console.log('Debug - myInProgressEmails:', myInProgressEmails);
+  
+  // Get draft orders for assigned emails
+  const assignedEmailIds = myInProgressEmails.map((email: any) => email.id);
+  const assignedDrafts = Array.isArray(drafts) ? drafts.filter((draft: any) => 
+    assignedEmailIds.includes(draft.emailId) && draft.status === "pending"
+  ) : [];
 
   const processedEmails = Array.isArray(emails) ? emails.filter((email: any) => 
     email.processed
@@ -213,15 +217,36 @@ export default function CustomerRequests() {
           <div className="text-lg font-semibold mb-4">
             My Assigned Emails ({user?.name})
           </div>
-          {myInProgressEmails.length === 0 ? (
+          {assignedDrafts.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center text-gray-500">
-                No emails assigned to you
+                No draft orders for your assigned emails
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4">
-              {myInProgressEmails.map((email) => renderEmailCard(email, false))}
+            <div className="space-y-4">
+              {/* Group drafts by email */}
+              {Object.entries(
+                assignedDrafts.reduce((groups: any, draft: any) => {
+                  const emailId = draft.emailId;
+                  if (!groups[emailId]) {
+                    groups[emailId] = {
+                      email: draft.email || myInProgressEmails.find((e: any) => e.id === emailId),
+                      drafts: []
+                    };
+                  }
+                  groups[emailId].drafts.push(draft);
+                  return groups;
+                }, {})
+              ).map(([emailId, group]: [string, any]) => (
+                <DraftOrderGroupCard
+                  key={emailId}
+                  email={group.email}
+                  drafts={group.drafts}
+                  showTakeToWork={false}
+                  isInProgress={true}
+                />
+              ))}
             </div>
           )}
         </TabsContent>
