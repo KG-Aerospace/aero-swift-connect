@@ -27,6 +27,10 @@ export default function CustomerRequests() {
     refetchInterval: 30000,
   });
 
+  // Debug log to check emails data
+  console.log("Emails data:", emails);
+  console.log("Assigned emails:", emails?.filter((e: any) => e.assignedToUserId && !e.processed));
+
   const { data: myAssignedEmails, isLoading: isAssignedLoading } = useQuery({
     queryKey: ["/api/emails/my-assigned"],
     refetchInterval: 30000,

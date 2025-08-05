@@ -63,8 +63,10 @@ export default function Orders() {
 
   const updateOrderMutation = useMutation({
     mutationFn: async ({ id, ...updates }: any) => {
-      const response = await apiRequest("PATCH", `/api/orders/${id}`, updates);
-      return response.json();
+      return apiRequest(`/api/orders/${id}`, {
+        method: "PATCH",
+        body: updates,
+      });
     },
     onSuccess: () => {
       toast({
