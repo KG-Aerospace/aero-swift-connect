@@ -1,9 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Filter, Package, Clock, DollarSign } from "lucide-react";
+import { Plus, Search, Filter, Package, Clock, DollarSign, Edit } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -12,11 +13,55 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function Orders() {
+  const [editingOrder, setEditingOrder] = useState<any>(null);
+  const [editFormData, setEditFormData] = useState<any>({});
+  const { toast } = useToast();
+
   const { data: orders, isLoading } = useQuery({
     queryKey: ["/api/orders"],
     refetchInterval: 30000,
+  });
+
+  const updateOrderMutation = useMutation({
+    mutationFn: async ({ id, ...updates }: any) => {
+      const response = await apiRequest("PATCH", `/api/orders/${id}`, updates);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Order updated successfully",
+        description: "The order details have been saved.",
+      });
+      setEditingOrder(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error updating order",
+        description: error.message || "Failed to update order",
+        variant: "destructive",
+      });
+    },
   });
 
   const getStatusColor = (status: string) => {
@@ -152,6 +197,16 @@ export default function Orders() {
                           <Button 
                             variant="link" 
                             size="sm"
+                            onClick={() => {
+                              setEditingOrder(order);
+                              setEditFormData({
+                                partNumber: order.partNumber,
+                                quantity: order.quantity,
+                                urgencyLevel: order.urgencyLevel || "normal",
+                                notes: order.notes || "",
+                                partDescription: order.partDescription || "",
+                              });
+                            }}
                             data-testid={`edit-order-${order.id}`}
                           >
                             Edit
@@ -240,6 +295,16 @@ export default function Orders() {
                     variant="outline" 
                     size="sm"
                     className="flex-1"
+                    onClick={() => {
+                      setEditingOrder(order);
+                      setEditFormData({
+                        partNumber: order.partNumber,
+                        quantity: order.quantity,
+                        urgencyLevel: order.urgencyLevel || "normal",
+                        notes: order.notes || "",
+                        partDescription: order.partDescription || "",
+                      });
+                    }}
                     data-testid={`edit-order-mobile-${order.id}`}
                   >
                     Edit
@@ -265,6 +330,142 @@ export default function Orders() {
             </div>
           )}
         </div>
+
+        {/* Edit Order Dialog */}
+        <Dialog open={!!editingOrder} onOpenChange={(open) => !open && setEditingOrder(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Order</DialogTitle>
+              <DialogDescription>
+                Update order details. The sales team can correct information as needed.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {editingOrder && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  updateOrderMutation.mutate({
+                    id: editingOrder.id,
+                    ...editFormData,
+                  });
+                }}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="orderNumber">Order Number</Label>
+                    <Input
+                      id="orderNumber"
+                      value={editingOrder.orderNumber}
+                      disabled
+                      className="bg-gray-50"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="customer">Customer</Label>
+                    <Input
+                      id="customer"
+                      value={editingOrder.customer?.name || "Unknown"}
+                      disabled
+                      className="bg-gray-50"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="partNumber">Part Number *</Label>
+                    <Input
+                      id="partNumber"
+                      value={editFormData.partNumber}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, partNumber: e.target.value })
+                      }
+                      required
+                      placeholder="e.g., MS24665-156"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity">Quantity *</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      min="1"
+                      value={editFormData.quantity}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, quantity: parseInt(e.target.value) })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="partDescription">Part Description</Label>
+                  <Input
+                    id="partDescription"
+                    value={editFormData.partDescription}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, partDescription: e.target.value })
+                    }
+                    placeholder="e.g., Screw, Machine"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="urgencyLevel">Urgency Level</Label>
+                  <Select
+                    value={editFormData.urgencyLevel}
+                    onValueChange={(value) =>
+                      setEditFormData({ ...editFormData, urgencyLevel: value })
+                    }
+                  >
+                    <SelectTrigger id="urgencyLevel">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="normal">Normal</SelectItem>
+                      <SelectItem value="urgent">Urgent</SelectItem>
+                      <SelectItem value="critical">Critical (AOG)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes / Delivery Requirements</Label>
+                  <Textarea
+                    id="notes"
+                    value={editFormData.notes}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, notes: e.target.value })
+                    }
+                    placeholder="Any special requirements or notes..."
+                    rows={3}
+                  />
+                </div>
+                
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setEditingOrder(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={updateOrderMutation.isPending}
+                  >
+                    {updateOrderMutation.isPending ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

@@ -112,6 +112,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/orders/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      const { orderCreationService } = await import("./services/orderCreationService");
+      const updatedOrder = await orderCreationService.updateOrder(id, updates);
+      
+      if (!updatedOrder) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      // Create activity
+      await storage.createActivity({
+        type: "order_updated",
+        description: `Order ${updatedOrder.orderNumber} was updated`,
+        entityType: "order",
+        entityId: updatedOrder.id,
+      });
+      
+      // Broadcast real-time update
+      broadcast({ type: "order_updated", data: updatedOrder });
+      
+      res.json(updatedOrder);
+    } catch (error) {
+      console.error("Error updating order:", error);
+      res.status(500).json({ message: "Failed to update order" });
+    }
+  });
+
   // Customers API
   app.get("/api/customers", async (_req, res) => {
     try {

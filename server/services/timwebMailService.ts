@@ -335,14 +335,22 @@ export class TimwebMailService {
         isUrgent: urgencyWords.some(word => body.toLowerCase().includes(word))
       });
 
-      // Update email status to processed
+      // Update email status to processing
       await db
         .update(emails)
         .set({ 
-          status: "processed",
+          status: "processing",
           processedAt: new Date()
         })
         .where(eq(emails.id, email.id));
+
+      // Automatically create orders from the email
+      const { orderCreationService } = await import("./orderCreationService");
+      const createdOrders = await orderCreationService.createOrderFromEmail(email, partNumbers, body);
+      
+      if (createdOrders.length > 0) {
+        console.log(`📦 Automatically created ${createdOrders.length} orders from email`);
+      }
     }
   }
 
