@@ -65,9 +65,10 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
   // Get all CR numbers from the drafts
   const crNumbers = [...new Set(drafts.map(draft => draft.crNumber).filter(Boolean))];
   
-  // Get orders related to these drafts by matching CR numbers
+  // Get orders related to this email by matching email ID
   const relatedOrders = orders.filter((order: any) => 
-    crNumbers.includes(order.crNumber)
+    order.emailId === email.id || 
+    (crNumbers.length > 0 && crNumbers.includes(order.crNumber))
   );
   
   // Count total items sent (orders created from this email)
@@ -369,20 +370,36 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
             <CardTitle className="text-lg">{email.subject}</CardTitle>
           </div>
           <div className="flex items-center gap-2">
-            {isInProgress && totalOrdersSent > 0 && (
-              <Badge className="bg-green-50 text-green-700 border-green-200">
-                <CheckCircle className="h-3 w-3 mr-1" />
-                All items done ({totalOrdersSent} sent)
-              </Badge>
+            {isInProgress && (
+              <>
+                {totalOrdersSent > 0 && (
+                  <Badge className="bg-green-50 text-green-700 border-green-200">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    All items done ({totalOrdersSent} sent)
+                  </Badge>
+                )}
+                
+                {requestedCount > 0 && (
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    {requestedCount} of {totalOrdersSent} requested
+                  </Badge>
+                )}
+                
+                {totalOrdersSent === 0 && drafts.length === 0 && (
+                  <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                    Processing
+                  </Badge>
+                )}
+                
+                {totalOrdersSent === 0 && drafts.length > 0 && (
+                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                    {drafts.length} part{drafts.length > 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </>
             )}
             
-            {isInProgress && requestedCount > 0 && (
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                {requestedCount} of {totalOrdersSent} requested
-              </Badge>
-            )}
-            
-            {isInProgress && totalOrdersSent === 0 && drafts.length > 0 && (
+            {!isInProgress && drafts.length > 0 && (
               <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
                 {drafts.length} part{drafts.length > 1 ? 's' : ''}
               </Badge>
