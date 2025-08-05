@@ -147,30 +147,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOrders(limit = 50): Promise<(Order & { customer?: Customer | null; email?: Email | null })[]> {
-    return db
-      .select({
-        id: orders.id,
-        orderNumber: orders.order_number,
-        customerId: orders.customer_id,
-        partNumber: orders.part_number,
-        partDescription: orders.part_description,
-        quantity: orders.quantity,
-        urgencyLevel: orders.urgency_level,
-        status: orders.status,
-        totalValue: orders.total_value,
-        emailId: orders.email_id,
-        notes: orders.notes,
-        createdAt: orders.created_at,
-        updatedAt: orders.updated_at,
-        customer: customers,
-        email: emails,
-      })
+    const result = await db
+      .select()
       .from(orders)
-      .leftJoin(customers, eq(orders.customer_id, customers.id))
-      .leftJoin(emails, eq(orders.email_id, emails.id))
+      .leftJoin(customers, eq(orders.customerId, customers.id))
+      .leftJoin(emails, eq(orders.emailId, emails.id))
       // Show all orders, not just verified
-      .orderBy(desc(orders.created_at))
+      .orderBy(desc(orders.createdAt))
       .limit(limit);
+
+    return result.map(row => ({
+      ...row.orders,
+      customer: row.customers,
+      email: row.emails,
+    }));
   }
 
   async getOrder(id: string): Promise<Order | undefined> {
@@ -214,25 +204,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getQuotes(): Promise<(Quote & { order?: Order | null; supplier?: Supplier | null })[]> {
-    return db
-      .select({
-        id: quotes.id,
-        orderId: quotes.orderId,
-        supplierId: quotes.supplierId,
-        price: quotes.price,
-        leadTimeDays: quotes.leadTimeDays,
-        validUntil: quotes.validUntil,
-        status: quotes.status,
-        supplierResponse: quotes.supplierResponse,
-        responseTime: quotes.responseTime,
-        createdAt: quotes.createdAt,
-        order: orders,
-        supplier: suppliers,
-      })
+    const result = await db
+      .select()
       .from(quotes)
       .leftJoin(orders, eq(quotes.orderId, orders.id))
       .leftJoin(suppliers, eq(quotes.supplierId, suppliers.id))
       .orderBy(desc(quotes.createdAt));
+
+    return result.map(row => ({
+      ...row.quotes,
+      order: row.orders,
+      supplier: row.suppliers,
+    }));
   }
 
   async getQuote(id: string): Promise<Quote | undefined> {
@@ -313,7 +296,7 @@ export class DatabaseStorage implements IStorage {
 
     // Total revenue (completed orders)
     const [revenueResult] = await db
-      .select({ total: sql<string>`COALESCE(SUM(${orders.total_value}), 0)` })
+      .select({ total: sql<string>`COALESCE(SUM(total_value), 0)` })
       .from(orders)
       .where(eq(orders.status, 'completed'));
 

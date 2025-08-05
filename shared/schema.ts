@@ -31,11 +31,11 @@ export const suppliers = pgTable("suppliers", {
   id: varchar("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  phone: text("phone"),
   website: text("website"),
-  specialties: text("specialties").array(),
-  responseTime: integer("response_time"), // in hours
-  successRate: integer("success_rate"), // percentage
+  apiEndpoint: text("api_endpoint"),
+  responseTimeHours: integer("response_time_hours"),
+  successRate: integer("success_rate"),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -74,14 +74,35 @@ export const orders = pgTable("orders", {
   partNumber: text("part_number").notNull(),
   partDescription: text("part_description"),
   quantity: integer("quantity").notNull(),
-  condition: text("condition"), // NE, NS, OH, SV, AR
-  urgency: text("urgency"), // AOG, Critical, Normal
-  targetPrice: integer("target_price"), // in cents
-  status: text("status").notNull(), // pending, quoted, ordered, shipped, delivered, cancelled
-  notes: text("notes"),
+  urgencyLevel: text("urgency_level"),
+  status: text("status").notNull(),
+  totalValue: text("total_value"),
   emailId: varchar("email_id").references(() => emails.id),
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  positionId: text("position_id"),
+  crNumber: text("cr_number"),
+  requisitionNumber: text("requisition_number"),
+  customerRequestDate: timestamp("customer_request_date"),
+  uom: text("uom"),
+  cheapExp: text("cheap_exp"),
+  acType: text("ac_type"),
+  engineType: text("engine_type"),
+  comment: text("comment"),
+  nq: text("nq"),
+  requested: text("requested"),
+  rfqDate: timestamp("rfq_date"),
+  ils: text("ils"),
+  rfqStatusIls: text("rfq_status_ils"),
+  ilsRfqDate: timestamp("ils_rfq_date"),
+  others: text("others"),
+  rfqStatus: text("rfq_status"),
+  supplierQuoteReceived: text("supplier_quote_received"),
+  supplierQuoteNotes: text("supplier_quote_notes"),
+  price: text("price"),
+  poNumber: text("po_number"),
+  condition: text("condition"),
 });
 
 export const insertOrderSchema = createInsertSchema(orders);
@@ -92,14 +113,13 @@ export const quotes = pgTable("quotes", {
   id: varchar("id").primaryKey(),
   orderId: varchar("order_id").references(() => orders.id),
   supplierId: varchar("supplier_id").references(() => suppliers.id),
-  price: integer("price").notNull(), // in cents
-  leadTime: integer("lead_time"), // in days
-  condition: text("condition"),
-  certification: text("certification"),
-  warranty: text("warranty"),
-  notes: text("notes"),
-  status: text("status").notNull(), // pending, accepted, rejected, expired
+  price: integer("price").notNull(),
+  leadTimeDays: integer("lead_time_days"),
+  leadTime: integer("lead_time"),
   validUntil: timestamp("valid_until"),
+  status: text("status").notNull(),
+  supplierResponse: jsonb("supplier_response"),
+  responseTimeHours: integer("response_time_hours"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

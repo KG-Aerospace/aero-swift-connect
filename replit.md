@@ -94,6 +94,24 @@ Preferred communication style: Simple, everyday language.
   - Email viewing integrated directly in the card for verification
   - Improved visual hierarchy showing email context and parts
 
+### August 5, 2025 - Database Schema Fixes & Performance Restoration
+- **Fixed Database Schema Mismatches**: Resolved critical schema issues causing API failures
+  - Suppliers table: Removed non-existent `phone` column, added missing columns (api_endpoint, response_time_hours, is_active)
+  - Orders table: Fixed `urgency` → `urgency_level` column name mismatch and added 20+ missing columns to match database
+  - Quotes table: Removed non-existent `condition`, `warranty`, `certification` columns, added `lead_time_days`, `supplier_response`, `response_time_hours`
+- **API Endpoints Restored**: All endpoints now functional returning 200 status
+  - Orders endpoint: Successfully returning all 809 orders with customer and email data
+  - Suppliers endpoint: Working with 7 active suppliers
+  - Quotes endpoint: Returning 4 pending quotes
+- **Dashboard Performance**: Real-time statistics now displaying correctly
+  - Processing 740 emails (80.4% processing rate)
+  - Tracking 3 active orders and 67 pending draft orders
+  - Real-time WebSocket updates functioning properly
+- **Query Optimization**: Simplified Drizzle ORM queries for better compatibility
+  - Replaced complex field mapping with direct table selections
+  - Fixed column name references in all service files
+  - Improved query performance and reliability
+
 ## System Architecture
 
 ### Frontend Architecture

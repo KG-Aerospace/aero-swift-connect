@@ -74,6 +74,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orders = await storage.getOrders(limit);
       res.json(orders);
     } catch (error) {
+      console.error("Error fetching orders:", error);
       res.status(500).json({ message: "Failed to fetch orders" });
     }
   });
@@ -192,6 +193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const suppliers = await storage.getSuppliers();
       res.json(suppliers);
     } catch (error) {
+      console.error("Error fetching suppliers:", error);
       res.status(500).json({ message: "Failed to fetch suppliers" });
     }
   });
@@ -222,6 +224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const quotes = await storage.getQuotes();
       res.json(quotes);
     } catch (error) {
+      console.error("Error fetching quotes:", error);
       res.status(500).json({ message: "Failed to fetch quotes" });
     }
   });
