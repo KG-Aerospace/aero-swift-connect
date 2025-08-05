@@ -42,10 +42,13 @@ export default function CustomerRequests() {
       queryClient.invalidateQueries({ queryKey: ["/api/emails"] });
       queryClient.invalidateQueries({ queryKey: ["/api/emails/my-assigned"] });
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/draft-orders"] });
       toast({
         title: "Email assigned",
         description: "The email has been assigned to you",
       });
+      // Switch to In Progress tab
+      setActiveTab("inprogress");
     },
     onError: () => {
       toast({
@@ -104,28 +107,28 @@ export default function CustomerRequests() {
   const pendingDrafts = Array.isArray(drafts) ? drafts.filter((draft: any) => draft.status === "pending") : [];
 
   const renderEmailCard = (email: any, showAssignButton: boolean = false) => (
-    <Card key={email.id} className="hover:shadow-lg transition-shadow" data-testid={`email-card-${email.id}`}>
+    <Card key={email.id} className="hover:shadow-lg transition-shadow overflow-hidden" data-testid={`email-card-${email.id}`}>
       <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-lg">{email.subject}</CardTitle>
-            <div className="flex items-center gap-4 text-sm text-gray-500">
-              <div className="flex items-center gap-1">
-                <User className="h-3 w-3" />
-                <span>{email.fromEmail}</span>
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-1 flex-1 min-w-0">
+            <CardTitle className="text-lg truncate">{email.subject}</CardTitle>
+            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+              <div className="flex items-center gap-1 min-w-0">
+                <User className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">{email.fromEmail}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                <span>{formatDistanceToNow(new Date(email.receivedAt), { addSuffix: true })}</span>
+                <span className="whitespace-nowrap">{formatDistanceToNow(new Date(email.receivedAt), { addSuffix: true })}</span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge className={getStatusColor(email.processed ? "processed" : "pending")}>
+          <div className="flex flex-wrap items-start gap-2 justify-end">
+            <Badge className={`${getStatusColor(email.processed ? "processed" : "pending")} whitespace-nowrap`}>
               {email.processed ? "Processed" : "Pending"}
             </Badge>
             {email.assignedToUserId && (
-              <Badge variant="secondary" className="flex items-center gap-1">
+              <Badge variant="secondary" className="flex items-center gap-1 whitespace-nowrap">
                 <UserCheck className="h-3 w-3" />
                 {email.assignedToUser?.name || "Assigned"}
               </Badge>
@@ -267,7 +270,7 @@ export default function CustomerRequests() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {processedEmails.slice(0, 20).map((email) => renderEmailCard(email, false))}
             </div>
           )}
