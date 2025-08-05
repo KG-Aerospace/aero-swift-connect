@@ -42,6 +42,25 @@ Preferred communication style: Simple, everyday language.
 - **Order Number Generation**: Improved uniqueness by including timestamp and random components (format: ORD-YYYYMMDD-TTTTTTRRR)
 - **Database Cleanup**: Removed false positive orders with encoded part numbers and common words
 
+### August 5, 2025 - Draft Order Review System Implementation
+- **Draft Orders System**: Implemented comprehensive draft order workflow for manual review
+  - Added `draft_orders` table to track parsed email parts before approval
+  - Created `DraftOrderService` for managing draft order lifecycle
+  - Changed email parser to create draft orders instead of direct orders
+- **Customer Requests Interface**: Completely redesigned customer-requests page
+  - Shows pending draft orders with edit/approve/reject functionality
+  - Displays unparsed emails separately for manual processing
+  - Added `DraftOrderCard` component with inline editing capabilities
+- **Manual Review Workflow**: 
+  - Email parsing → Creates draft orders → Manual review in customer-requests → Approve to create verified orders
+  - Orders approved through manual review marked with "verified" status
+  - Rejected drafts stored with rejection reasons for audit trail
+- **API Endpoints**: Added comprehensive draft order API
+  - GET /api/draft-orders - List all draft orders with customer/email data
+  - PATCH /api/draft-orders/:id - Update draft order details
+  - POST /api/draft-orders/:id/approve - Approve and create verified order
+  - POST /api/draft-orders/:id/reject - Reject with reason
+
 ## System Architecture
 
 ### Frontend Architecture

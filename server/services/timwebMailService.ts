@@ -1,7 +1,7 @@
 import Imap from "imap";
 import { simpleParser } from "mailparser";
 import { db } from "../db";
-import { emails, customers, orders } from "@shared/schema";
+import { emails, customers, orders, draftOrders } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { ObjectStorageService } from "../objectStorage";
 import { airlineParserService } from "./airlineParserService";
@@ -355,45 +355,33 @@ export class TimwebMailService {
         })
         .where(eq(emails.id, email.id));
 
-      // Create orders from parsed results
-      const { orderCreationService } = await import("./orderCreationService");
-      const ordersCreated = [];
+      // Create draft orders from parsed results
+      const { draftOrderService } = await import("./draftOrderService");
+      const draftsCreated = [];
       
       for (const parsedOrder of parsingResult.orders) {
         try {
-          const [customer] = await db
-            .select()
-            .from(customers)
-            .where(eq(customers.id, email.customerId));
-          
-          if (!customer) {
-            console.error("Customer not found for email:", email.id);
-            continue;
-          }
-
-          const orderNumber = this.generateOrderNumber();
-          
-          const [newOrder] = await db.insert(orders).values({
-            orderNumber,
-            customerId: email.customerId,
+          const draft = await draftOrderService.createDraftOrder({
             emailId: email.id,
+            customerId: email.customerId,
             partNumber: parsedOrder.partNumber,
-            partDescription: parsedOrder.description || "",
             quantity: parsedOrder.quantity,
-            urgencyLevel: parsedOrder.priority === "URGENT" ? "critical" : "normal",
-            status: "pending",
-            notes: `Condition: ${parsedOrder.condition}, Priority: ${parsedOrder.priority}`,
-          }).returning();
+            condition: parsedOrder.condition,
+            urgencyLevel: parsedOrder.priority === "URGENT" ? "urgent" : "normal",
+            description: parsedOrder.description,
+          });
           
-          ordersCreated.push(newOrder);
-          console.log(`📦 Created order ${orderNumber} for part ${parsedOrder.partNumber}`);
+          if (draft) {
+            draftsCreated.push(draft);
+            console.log(`📋 Created draft order for part ${parsedOrder.partNumber}`);
+          }
         } catch (error) {
-          console.error(`Error creating order for part ${parsedOrder.partNumber}:`, error);
+          console.error(`Error creating draft for part ${parsedOrder.partNumber}:`, error);
         }
       }
       
-      if (ordersCreated.length > 0) {
-        console.log(`📦 Automatically created ${ordersCreated.length} orders from email`);
+      if (draftsCreated.length > 0) {
+        console.log(`📋 Created ${draftsCreated.length} draft orders from email`);
         
         // Update email status to processed
         await db

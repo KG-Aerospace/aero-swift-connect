@@ -41,6 +41,7 @@ export interface IStorage {
   createOrder(order: InsertOrder): Promise<Order>;
   updateOrderStatus(id: string, status: string): Promise<Order>;
   updateOrderValue(id: string, value: string): Promise<Order>;
+  updateOrder(id: string, updates: Partial<InsertOrder>): Promise<Order>;
 
   // Quotes
   getQuotes(): Promise<(Quote & { order?: Order | null; supplier?: Supplier | null })[]>;
@@ -125,10 +126,7 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(emails).orderBy(desc(emails.createdAt)).limit(limit);
   }
 
-  async getEmail(id: string): Promise<Email | undefined> {
-    const [email] = await db.select().from(emails).where(eq(emails.id, id));
-    return email || undefined;
-  }
+
 
   async createEmail(insertEmail: InsertEmail): Promise<Email> {
     const [email] = await db.insert(emails).values(insertEmail).returning();
@@ -199,6 +197,15 @@ export class DatabaseStorage implements IStorage {
     const [order] = await db
       .update(orders)
       .set({ totalValue: value, updatedAt: new Date() })
+      .where(eq(orders.id, id))
+      .returning();
+    return order;
+  }
+
+  async updateOrder(id: string, updates: Partial<InsertOrder>): Promise<Order> {
+    const [order] = await db
+      .update(orders)
+      .set({ ...updates, updatedAt: new Date() })
       .where(eq(orders.id, id))
       .returning();
     return order;

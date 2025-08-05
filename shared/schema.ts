@@ -95,6 +95,24 @@ export const activities = pgTable("activities", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Draft orders table - for customer requests that need review before becoming orders
+export const draftOrders = pgTable("draft_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  emailId: varchar("email_id").references(() => emails.id),
+  customerId: varchar("customer_id").references(() => customers.id),
+  partNumber: text("part_number").notNull(),
+  partDescription: text("part_description"),
+  quantity: integer("quantity").notNull(),
+  urgencyLevel: text("urgency_level").notNull().default("normal"), // normal, urgent, critical
+  condition: text("condition").default("NE"), // NE, NS, OH, SV, AR, etc.
+  status: text("status").notNull().default("draft"), // draft, reviewed, approved, rejected
+  notes: text("notes"),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Procurement requests table
 export const procurementRequests = pgTable("procurement_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -127,6 +145,7 @@ export const procurementRequests = pgTable("procurement_requests", {
 export const customersRelations = relations(customers, ({ many }) => ({
   orders: many(orders),
   emails: many(emails),
+  draftOrders: many(draftOrders),
 }));
 
 export const suppliersRelations = relations(suppliers, ({ many }) => ({
@@ -139,6 +158,7 @@ export const emailsRelations = relations(emails, ({ one, many }) => ({
     references: [customers.id],
   }),
   orders: many(orders),
+  draftOrders: many(draftOrders),
 }));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
@@ -194,6 +214,21 @@ export const activitiesRelations = relations(activities, ({ one }) => ({
   }),
 }));
 
+export const draftOrdersRelations = relations(draftOrders, ({ one }) => ({
+  email: one(emails, {
+    fields: [draftOrders.emailId],
+    references: [emails.id],
+  }),
+  customer: one(customers, {
+    fields: [draftOrders.customerId],
+    references: [customers.id],
+  }),
+  reviewedByUser: one(users, {
+    fields: [draftOrders.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -222,6 +257,13 @@ export const insertOrderSchema = createInsertSchema(orders).omit({
   updatedAt: true,
 });
 
+export const insertDraftOrderSchema = createInsertSchema(draftOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  reviewedAt: true,
+});
+
 export const insertQuoteSchema = createInsertSchema(quotes).omit({
   id: true,
   createdAt: true,
@@ -242,6 +284,8 @@ export const insertProcurementRequestSchema = createInsertSchema(procurementRequ
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type DraftOrder = typeof draftOrders.$inferSelect;
+export type InsertDraftOrder = z.infer<typeof insertDraftOrderSchema>;
 
 export type Customer = typeof customers.$inferSelect;
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;

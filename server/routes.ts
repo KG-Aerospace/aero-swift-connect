@@ -2,13 +2,14 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { insertCustomerSchema, insertSupplierSchema, insertOrderSchema, insertQuoteSchema, insertEmailSchema, insertProcurementRequestSchema } from "@shared/schema";
+import { insertCustomerSchema, insertSupplierSchema, insertOrderSchema, insertQuoteSchema, insertEmailSchema, insertProcurementRequestSchema, insertDraftOrderSchema } from "@shared/schema";
 import { emailService } from "./services/emailService";
 import { supplierService } from "./services/supplierService";
 import { timwebMailService } from "./services/timwebMailService";
 import { supplierQuoteParser } from "./services/supplierQuoteParser";
 import { procurementRequestService } from "./services/procurementRequestService";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { draftOrderService } from "./services/draftOrderService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -118,8 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const updates = req.body;
       
-      const { orderCreationService } = await import("./services/orderCreationService");
-      const updatedOrder = await orderCreationService.updateOrder(id, updates);
+      const updatedOrder = await storage.updateOrder(id, updates);
       
       if (!updatedOrder) {
         return res.status(404).json({ message: "Order not found" });
@@ -507,6 +507,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.sendStatus(404);
       }
       return res.sendStatus(500);
+    }
+  });
+
+  // Draft Orders API
+  app.get("/api/draft-orders", async (_req, res) => {
+    try {
+      const drafts = await draftOrderService.getAllDrafts();
+      res.json(drafts);
+    } catch (error) {
+      console.error("Error fetching draft orders:", error);
+      res.status(500).json({ message: "Failed to fetch draft orders" });
+    }
+  });
+  
+  app.get("/api/draft-orders/email/:emailId", async (req, res) => {
+    try {
+      const drafts = await draftOrderService.getDraftsByEmail(req.params.emailId);
+      res.json(drafts);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch draft orders" });
+    }
+  });
+  
+  app.patch("/api/draft-orders/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = insertDraftOrderSchema.partial().parse(req.body);
+      const updatedDraft = await draftOrderService.updateDraft(id, updates);
+      res.json(updatedDraft);
+    } catch (error) {
+      console.error("Error updating draft order:", error);
+      res.status(400).json({ message: "Failed to update draft order" });
+    }
+  });
+  
+  app.post("/api/draft-orders/:id/approve", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const order = await draftOrderService.approveDraft(id);
+      
+      if (order) {
+        // Create activity
+        await storage.createActivity({
+          type: "draft_approved",
+          description: `Draft order approved and created order ${order.orderNumber}`,
+          entityType: "order",
+          entityId: order.id,
+        });
+        
+        // Broadcast real-time update
+        broadcast({ type: "draft_approved", data: order });
+      }
+      
+      res.json({ success: true, order });
+    } catch (error) {
+      console.error("Error approving draft order:", error);
+      res.status(500).json({ message: "Failed to approve draft order" });
+    }
+  });
+  
+  app.post("/api/draft-orders/:id/reject", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { notes } = req.body;
+      await draftOrderService.rejectDraft(id, undefined, notes);
+      
+      // Create activity
+      await storage.createActivity({
+        type: "draft_rejected",
+        description: `Draft order rejected: ${notes || "No reason provided"}`,
+        entityType: "draft_order",
+        entityId: id,
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error rejecting draft order:", error);
+      res.status(500).json({ message: "Failed to reject draft order" });
     }
   });
 
