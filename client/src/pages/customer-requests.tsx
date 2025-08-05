@@ -96,11 +96,12 @@ export default function CustomerRequests() {
     !email.processed && !email.assignedToUserId
   ) : [];
 
-  console.log('myAssignedEmails:', myAssignedEmails);
-  const myInProgressEmails = Array.isArray(myAssignedEmails) ? myAssignedEmails.filter((email: any) => 
-    !email.processed
-  ) : [];
-  console.log('myInProgressEmails:', myInProgressEmails);
+  // All assigned emails that aren't fully completed should be shown in "In Progress"
+  // We don't filter by processed status because emails can have draft orders created 
+  // but still need to be worked on by the assigned user
+  const myInProgressEmails = Array.isArray(myAssignedEmails) ? myAssignedEmails : [];
+  console.log('Debug - myAssignedEmails:', myAssignedEmails);
+  console.log('Debug - myInProgressEmails:', myInProgressEmails);
 
   const processedEmails = Array.isArray(emails) ? emails.filter((email: any) => 
     email.processed
