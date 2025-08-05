@@ -35,6 +35,7 @@ export interface IStorage {
   getEmail(id: string): Promise<Email | undefined>;
   createEmail(email: InsertEmail): Promise<Email>;
   updateEmailStatus(id: string, status: string, customerId?: string): Promise<Email>;
+  getUnprocessedEmails(limit?: number): Promise<Email[]>;
 
   // Orders
   getOrders(limit?: number): Promise<(Order & { customer?: Customer | null; email?: Email | null })[]>;
@@ -144,6 +145,20 @@ export class DatabaseStorage implements IStorage {
       .where(eq(emails.id, id))
       .returning();
     return email;
+  }
+
+  async getUnprocessedEmails(limit?: number): Promise<Email[]> {
+    const query = db
+      .select()
+      .from(emails)
+      .where(eq(emails.processed, false))
+      .orderBy(desc(emails.receivedAt));
+    
+    if (limit) {
+      query.limit(limit);
+    }
+    
+    return query;
   }
 
   async getOrders(limit = 50): Promise<(Order & { customer?: Customer | null; email?: Email | null })[]> {

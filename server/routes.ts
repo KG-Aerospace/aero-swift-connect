@@ -536,6 +536,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Process unprocessed emails endpoint
+  app.post("/api/emails/process-unprocessed", async (_req, res) => {
+    try {
+      const unprocessedEmails = await storage.getUnprocessedEmails(100);
+      let processed = 0;
+      
+      for (const email of unprocessedEmails) {
+        try {
+          // Process the email for aviation parts requests
+          const body = email.body || email.content || '';
+          await timwebMailService.processAviationPartsRequest(email, body);
+          processed++;
+        } catch (error) {
+          console.error(`Error processing email ${email.id}:`, error);
+        }
+      }
+      
+      res.json({ message: `Processed ${processed} emails`, processed });
+    } catch (error) {
+      console.error("Error processing unprocessed emails:", error);
+      res.status(500).json({ message: "Failed to process emails" });
+    }
+  });
+
   // Draft Orders API
   app.get("/api/draft-orders", async (_req, res) => {
     try {

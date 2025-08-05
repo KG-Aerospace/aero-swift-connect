@@ -232,8 +232,8 @@ export class TimwebMailService {
         .values({
           fromEmail: fromEmail,
           subject,
-          body: body.substring(0, 5000), // Limit body length
-          bodyHtml: bodyHtml ? bodyHtml.substring(0, 50000) : null, // Store HTML version
+          body: body ? body.substring(0, 5000) : '', // Ensure body is never null
+          bodyHtml: bodyHtml ? bodyHtml.substring(0, 50000) : '', // Ensure bodyHtml is never null
           attachments: attachmentData.length > 0 ? attachmentData : null,
           status: "pending",
           customerId: customer.id,
@@ -337,7 +337,7 @@ export class TimwebMailService {
     return hasBusinessDomain && (hasBusinessSubject || subject.length > 10);
   }
 
-  private async processAviationPartsRequest(email: any, body: string) {
+  public async processAviationPartsRequest(email: any, body: string) {
     // Use airline-specific parser
     const parsingResult = airlineParserService.parseEmailByAirline(email, body);
     
@@ -351,6 +351,7 @@ export class TimwebMailService {
         .update(emails)
         .set({ 
           status: "processing",
+          processed: true,
           processedAt: new Date()
         })
         .where(eq(emails.id, email.id));
@@ -392,6 +393,7 @@ export class TimwebMailService {
           .update(emails)
           .set({ 
             status: "processed",
+            processed: true,
             processedAt: new Date()
           })
           .where(eq(emails.id, email.id));
