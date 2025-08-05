@@ -111,7 +111,10 @@ export default function CustomerRequests() {
     email.processed
   ) : [];
 
-  const pendingDrafts = Array.isArray(drafts) ? drafts.filter((draft: any) => draft.status === "pending") : [];
+  // Only show drafts in "Draft Orders" tab if they are not assigned to any user
+  const pendingDrafts = Array.isArray(drafts) ? drafts.filter((draft: any) => 
+    draft.status === "pending" && !draft.email?.assignedToUserId
+  ) : [];
 
   const renderEmailCard = (email: any, showAssignButton: boolean = false) => (
     <Card key={email.id} className="hover:shadow-lg transition-shadow overflow-hidden" data-testid={`email-card-${email.id}`}>
@@ -200,6 +203,37 @@ export default function CustomerRequests() {
           <div className="text-lg font-semibold mb-4">
             Available Customer Requests
           </div>
+          
+          {/* Assigned emails section - shows all emails being worked on */}
+          {Array.isArray(emails) && emails.filter((email: any) => email.assignedToUserId && !email.processed).length > 0 && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Currently Being Worked On</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {emails
+                    .filter((email: any) => email.assignedToUserId && !email.processed)
+                    .map((email: any) => (
+                      <div key={email.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium truncate">{email.subject}</div>
+                            <div className="text-xs text-gray-500">{email.fromEmail}</div>
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="flex items-center gap-1 ml-2 whitespace-nowrap">
+                          <UserCheck className="h-3 w-3" />
+                          {email.assignedToUser?.name || "Assigned"}
+                        </Badge>
+                      </div>
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
           {availableEmails.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center text-gray-500">

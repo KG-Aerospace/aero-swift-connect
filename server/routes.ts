@@ -453,6 +453,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mark email as processed (skip)
+  app.post("/api/emails/:id/mark-processed", requireAuth, async (req, res) => {
+    try {
+      const emailId = req.params.id;
+      const userId = req.session!.userId!;
+      
+      const email = await storage.markEmailAsProcessed(emailId);
+      
+      // Create activity
+      const user = await storage.getUser(userId);
+      await storage.createActivity({
+        type: "email_skipped",
+        description: `Email marked as processed by ${user?.name || 'user'}`,
+        entityType: "email",
+        entityId: emailId,
+        userId: userId
+      });
+      
+      // Broadcast real-time update
+      broadcast({ type: "email_processed", data: { emailId, userId, userName: user?.name } });
+      
+      res.json(email);
+    } catch (error) {
+      console.error("Failed to mark email as processed:", error);
+      res.status(500).json({ message: "Failed to mark email as processed" });
+    }
+  });
+
   // Get user's assigned emails
   app.get("/api/emails/my-assigned", requireAuth, async (req, res) => {
     try {

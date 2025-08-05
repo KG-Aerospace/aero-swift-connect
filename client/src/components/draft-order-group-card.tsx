@@ -322,6 +322,31 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
     },
   });
 
+  // Skip email mutation - marks email as processed without creating orders
+  const skipEmailMutation = useMutation({
+    mutationFn: async (emailId: string) => {
+      return apiRequest(`/api/emails/${emailId}/mark-processed`, {
+        method: "POST",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/emails"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/emails/my-assigned"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/draft-orders"] });
+      toast({
+        title: "Email skipped",
+        description: "The email has been marked as processed",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to skip email",
+        variant: "destructive",
+      });
+    },
+  });
+
   const customer = drafts[0]?.customer;
 
   return (
@@ -375,17 +400,29 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
           
           {/* Action buttons */}
           <div className="flex items-center justify-between gap-3">
-            {/* Take to Work button */}
+            {/* Take to Work and Skip buttons */}
             {showTakeToWork && !email.assignedToUserId && (
-              <Button
-                onClick={() => assignEmailMutation.mutate(email.id)}
-                disabled={assignEmailMutation.isPending}
-                className="flex-1"
-                data-testid={`button-assign-${email.id}`}
-              >
-                <UserCheck className="h-4 w-4 mr-2" />
-                Take to Work
-              </Button>
+              <div className="flex gap-2 flex-1">
+                <Button
+                  onClick={() => assignEmailMutation.mutate(email.id)}
+                  disabled={assignEmailMutation.isPending}
+                  className="flex-1"
+                  data-testid={`button-assign-${email.id}`}
+                >
+                  <UserCheck className="h-4 w-4 mr-2" />
+                  Take to Work
+                </Button>
+                <Button
+                  onClick={() => skipEmailMutation.mutate(email.id)}
+                  disabled={skipEmailMutation.isPending}
+                  variant="outline"
+                  className="flex-1"
+                  data-testid={`button-skip-${email.id}`}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Skip
+                </Button>
+              </div>
             )}
             
             {/* Email view button */}

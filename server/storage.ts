@@ -40,6 +40,7 @@ export interface IStorage {
   getUnprocessedEmails(limit?: number): Promise<Email[]>;
   assignEmailToUser(emailId: string, userId: string): Promise<Email>;
   getAssignedEmails(userId: string): Promise<Email[]>;
+  markEmailAsProcessed(emailId: string): Promise<Email>;
 
   // Orders
   getOrders(limit?: number): Promise<(Order & { customer?: Customer | null; email?: Email | null })[]>;
@@ -220,6 +221,18 @@ export class DatabaseStorage implements IStorage {
       ...row.email,
       assignedToUser: row.assignedToUser
     }));
+  }
+
+  async markEmailAsProcessed(emailId: string): Promise<Email> {
+    const [email] = await db
+      .update(emails)
+      .set({ 
+        processed: true,
+        processedAt: new Date()
+      })
+      .where(eq(emails.id, emailId))
+      .returning();
+    return email;
   }
 
   async getOrders(limit = 50): Promise<(Order & { customer?: Customer | null; email?: Email | null })[]> {
