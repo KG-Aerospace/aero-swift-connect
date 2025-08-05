@@ -6,12 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AutocompleteInput } from "@/components/ui/autocomplete-input";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Check, X, Edit2, Save, Package, User, Calendar, Mail, Clock, Eye, ChevronDown, ChevronUp, Hash } from "lucide-react";
+import { Check, X, Edit2, Save, Package, User, Calendar, Mail, Clock, Eye, ChevronDown, ChevronUp, Hash, Plus } from "lucide-react";
 import type { DraftOrder, AcType, EngineType } from "@/../../shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
 
@@ -32,6 +32,12 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
   const [editingDrafts, setEditingDrafts] = useState<Record<string, any>>({});
   const [rejectionDialogOpen, setRejectionDialogOpen] = useState<Record<string, boolean>>({});
   const [rejectionReasons, setRejectionReasons] = useState<Record<string, string>>({});
+  const [showAddItemDialog, setShowAddItemDialog] = useState(false);
+  const [newItemData, setNewItemData] = useState({
+    partNumber: "",
+    partDescription: "",
+    quantity: 1,
+  });
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -161,6 +167,57 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
     }
   };
 
+  const addItemMutation = useMutation({
+    mutationFn: async (data: { 
+      emailId: string; 
+      crNumber: string; 
+      partNumber: string; 
+      partDescription: string; 
+      quantity: number;
+    }) => {
+      const response = await apiRequest("POST", "/api/draft-orders/add-item", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/draft-orders"] });
+      toast({
+        title: "Item added",
+        description: "New item has been added to the draft order",
+      });
+      setShowAddItemDialog(false);
+      setNewItemData({ partNumber: "", partDescription: "", quantity: 1 });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add item to draft order",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddItem = () => {
+    if (!newItemData.partNumber || newItemData.quantity < 1) {
+      toast({
+        title: "Invalid input",
+        description: "Please enter a valid part number and quantity",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Get the CR Number from the first draft
+    const crNumber = drafts[0]?.crNumber || "";
+    
+    addItemMutation.mutate({
+      emailId: email.id,
+      crNumber,
+      partNumber: newItemData.partNumber,
+      partDescription: newItemData.partDescription,
+      quantity: newItemData.quantity,
+    });
+  };
+
   const customer = drafts[0]?.customer;
 
   return (
@@ -278,6 +335,19 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
             )}
           </div>
         )}
+
+        {/* Add Item Button */}
+        <div className="flex justify-end mb-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAddItemDialog(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Add Item
+          </Button>
+        </div>
 
         {/* Parts list */}
         <div className="space-y-4">
@@ -472,6 +542,79 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
             );
           })}
         </div>
+
+        {/* Add Item Dialog */}
+        <Dialog open={showAddItemDialog} onOpenChange={setShowAddItemDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Item</DialogTitle>
+              <DialogDescription>
+                Add a new item to this draft order (CR Number: {drafts[0]?.crNumber})
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="partNumber">Part Number *</Label>
+                <Input
+                  id="partNumber"
+                  value={newItemData.partNumber}
+                  onChange={(e) => setNewItemData({ 
+                    ...newItemData, 
+                    partNumber: e.target.value 
+                  })}
+                  placeholder="Enter part number"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="partDescription">Part Description</Label>
+                <Textarea
+                  id="partDescription"
+                  value={newItemData.partDescription}
+                  onChange={(e) => setNewItemData({ 
+                    ...newItemData, 
+                    partDescription: e.target.value 
+                  })}
+                  placeholder="Enter part description"
+                  className="min-h-[80px]"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="quantity">Quantity *</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min="1"
+                  value={newItemData.quantity}
+                  onChange={(e) => setNewItemData({ 
+                    ...newItemData, 
+                    quantity: parseInt(e.target.value) || 1 
+                  })}
+                />
+              </div>
+            </div>
+            
+            <DialogFooter className="mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAddItemDialog(false);
+                  setNewItemData({ partNumber: "", partDescription: "", quantity: 1 });
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleAddItem}
+                disabled={!newItemData.partNumber || newItemData.quantity < 1}
+              >
+                Add Item
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

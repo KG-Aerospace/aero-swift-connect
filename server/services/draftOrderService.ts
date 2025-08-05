@@ -4,6 +4,62 @@ import { eq, desc, sql } from "drizzle-orm";
 import type { DraftOrder, InsertDraftOrder, Order } from "@shared/schema";
 
 class DraftOrderService {
+  async createDraftOrderWithCR(data: {
+    emailId: string;
+    customerId: string;
+    crNumber: string;
+    partNumber: string;
+    partDescription: string;
+    quantity: number;
+    condition?: string;
+    urgencyLevel?: string;
+    emailFrom?: string;
+    emailDate?: Date;
+  }): Promise<DraftOrder | null> {
+    try {
+      // Generate unique Requisition Number (count all draft orders)
+      const [reqCountResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(draftOrders);
+      
+      const reqNumber = (reqCountResult.count || 0) + 1;
+      const requisitionNumber = `ID-${reqNumber.toString().padStart(5, '0')}`;
+      
+      const draftId = `draft-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      const [draft] = await db
+        .insert(draftOrders)
+        .values({
+          id: draftId,
+          emailId: data.emailId,
+          customerId: data.customerId,
+          partNumber: data.partNumber,
+          partDescription: data.partDescription,
+          quantity: data.quantity,
+          condition: data.condition || "NE",
+          urgencyLevel: data.urgencyLevel || "normal",
+          status: "pending",
+          notes: "",
+          customerReference: data.emailFrom || "",
+          crNumber: data.crNumber, // Use provided CR Number
+          requisitionNumber: requisitionNumber, // Unique per item
+          positionId: requisitionNumber,
+          customerRequestDate: data.emailDate || new Date(),
+          uom: "EA",
+          cheapExp: "CHEAP",
+          acType: "",
+          engineType: "",
+          comment: "",
+        })
+        .returning();
+      
+      return draft;
+    } catch (error) {
+      console.error("Error creating draft order with CR:", error);
+      return null;
+    }
+  }
+
   async createDraftOrder(data: {
     emailId: string;
     customerId: string;
@@ -48,9 +104,12 @@ class DraftOrderService {
       const reqNumber = (reqCountResult.count || 0) + 1;
       requisitionNumber = `ID-${reqNumber.toString().padStart(5, '0')}`;
       
+      const draftId = `draft-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
       const [draft] = await db
         .insert(draftOrders)
         .values({
+          id: draftId,
           emailId: data.emailId,
           customerId: data.customerId,
           partNumber: data.partNumber,
@@ -151,9 +210,12 @@ class DraftOrderService {
       const orderNumber = this.generateOrderNumber();
 
       // Create the order with all fields from draft
+      const orderId = `order-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
       const [order] = await db
         .insert(orders)
         .values({
+          id: orderId,
           orderNumber,
           customerId: draft.customerId,
           emailId: draft.emailId,

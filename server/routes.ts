@@ -649,5 +649,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add new item to existing draft group (same CR Number)
+  app.post("/api/draft-orders/add-item", async (req, res) => {
+    try {
+      const { emailId, crNumber, partNumber, partDescription, quantity } = req.body;
+      
+      if (!emailId || !crNumber || !partNumber || !quantity) {
+        return res.status(400).json({ 
+          error: "emailId, crNumber, partNumber and quantity are required" 
+        });
+      }
+
+      // Get the customer ID from existing drafts with same emailId
+      const existingDrafts = await draftOrderService.getDraftsByEmail(emailId);
+      if (!existingDrafts || existingDrafts.length === 0) {
+        return res.status(404).json({ error: "No drafts found for this email" });
+      }
+
+      const customerId = existingDrafts[0].customerId;
+      const customerReference = existingDrafts[0].customerReference || "";
+      const customerRequestDate = existingDrafts[0].customerRequestDate || new Date();
+
+      // Create new draft with same CR Number
+      const newDraft = await draftOrderService.createDraftOrderWithCR({
+        emailId,
+        customerId,
+        crNumber,
+        partNumber,
+        partDescription: partDescription || "",
+        quantity,
+        condition: "NE",
+        urgencyLevel: "normal",
+        emailFrom: customerReference,
+        emailDate: customerRequestDate,
+      });
+
+      if (newDraft) {
+        res.json({ success: true, draft: newDraft });
+      } else {
+        res.status(500).json({ error: "Failed to create draft item" });
+      }
+    } catch (error) {
+      console.error("Error adding draft item:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to add draft item" 
+      });
+    }
+  });
+
   return httpServer;
 }
