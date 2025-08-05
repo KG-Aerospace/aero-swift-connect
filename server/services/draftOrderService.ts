@@ -190,7 +190,7 @@ class DraftOrderService {
         .update(draftOrders)
         .set({
           status: "rejected",
-          reviewedBy: rejectedBy || "system",
+          reviewedBy: rejectedBy || "627da808-4f41-45ac-9597-29a6c8471b3b", // Use admin user ID instead of "system"
           reviewedAt: new Date(),
           updatedAt: new Date(),
           rejectionReason: notes || "No reason provided",
@@ -218,9 +218,27 @@ class DraftOrderService {
   async getRejectedDrafts(): Promise<any[]> {
     const rejectedDrafts = await db
       .select({
-        ...draftOrders,
-        customer: customers,
-        email: emails,
+        id: draftOrders.id,
+        partNumber: draftOrders.partNumber,
+        partDescription: draftOrders.partDescription,
+        quantity: draftOrders.quantity,
+        uom: draftOrders.uom,
+        condition: draftOrders.condition,
+        urgencyLevel: draftOrders.urgencyLevel,
+        status: draftOrders.status,
+        notes: draftOrders.notes,
+        rejectionReason: draftOrders.rejectionReason,
+        reviewedAt: draftOrders.reviewedAt,
+        positionId: draftOrders.positionId,
+        crNumber: draftOrders.crNumber,
+        customer: {
+          name: customers.name,
+          company: customers.company,
+        },
+        email: {
+          subject: emails.subject,
+          fromEmail: emails.fromEmail,
+        },
       })
       .from(draftOrders)
       .leftJoin(customers, eq(draftOrders.customerId, customers.id))
