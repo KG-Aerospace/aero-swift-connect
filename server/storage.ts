@@ -38,6 +38,8 @@ export interface IStorage {
   createEmail(email: InsertEmail): Promise<Email>;
   updateEmailStatus(id: string, status: string, customerId?: string): Promise<Email>;
   getUnprocessedEmails(limit?: number): Promise<Email[]>;
+  assignEmailToUser(emailId: string, userId: string): Promise<Email>;
+  getAssignedEmails(userId: string): Promise<Email[]>;
 
   // Orders
   getOrders(limit?: number): Promise<(Order & { customer?: Customer | null; email?: Email | null })[]>;
@@ -134,7 +136,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getEmails(limit = 50): Promise<Email[]> {
-    return db.select().from(emails).orderBy(desc(emails.createdAt)).limit(limit);
+    const result = await db
+      .select({
+        email: emails,
+        assignedToUser: users
+      })
+      .from(emails)
+      .leftJoin(users, eq(emails.assignedToUserId, users.id))
+      .orderBy(desc(emails.createdAt))
+      .limit(limit);
+    
+    return result.map(row => ({
+      ...row.email,
+      assignedToUser: row.assignedToUser
+    }));
   }
 
   async getEmail(id: string): Promise<Email | undefined> {
@@ -176,6 +191,35 @@ export class DatabaseStorage implements IStorage {
     }
     
     return query;
+  }
+
+  async assignEmailToUser(emailId: string, userId: string): Promise<Email> {
+    const [email] = await db
+      .update(emails)
+      .set({ 
+        assignedToUserId: userId,
+        assignedAt: new Date()
+      })
+      .where(eq(emails.id, emailId))
+      .returning();
+    return email;
+  }
+
+  async getAssignedEmails(userId: string): Promise<Email[]> {
+    const result = await db
+      .select({
+        email: emails,
+        assignedToUser: users
+      })
+      .from(emails)
+      .leftJoin(users, eq(emails.assignedToUserId, users.id))
+      .where(eq(emails.assignedToUserId, userId))
+      .orderBy(desc(emails.assignedAt));
+    
+    return result.map(row => ({
+      ...row.email,
+      assignedToUser: row.assignedToUser
+    }));
   }
 
   async getOrders(limit = 50): Promise<(Order & { customer?: Customer | null; email?: Email | null })[]> {

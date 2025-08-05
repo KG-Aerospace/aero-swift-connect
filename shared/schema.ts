@@ -60,6 +60,8 @@ export const emails = pgTable("emails", {
   receivedAt: timestamp("received_at").notNull(),
   processed: boolean("processed").default(false),
   customerId: varchar("customer_id").references(() => customers.id),
+  assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+  assignedAt: timestamp("assigned_at"),
   createdAt: timestamp("created_at").defaultNow(),
   attachments: jsonb("attachments").$type<Array<{
     filename: string;
@@ -258,6 +260,10 @@ export const emailRelations = relations(emails, ({ one, many }) => ({
   customer: one(customers, {
     fields: [emails.customerId],
     references: [customers.id],
+  }),
+  assignedToUser: one(users, {
+    fields: [emails.assignedToUserId],
+    references: [users.id],
   }),
   orders: many(orders),
   draftOrders: many(draftOrders),

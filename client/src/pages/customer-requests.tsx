@@ -1,14 +1,22 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Mail, User, Calendar, Clock, Package, FileText } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { Link } from "wouter";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Mail, User, Calendar, Clock, Package, UserCheck, CheckCircle } from "lucide-react";
+import { formatDistanceToNow, format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { DraftOrderCard } from "@/components/draft-order-card";
 import { DraftOrderGroupCard } from "@/components/draft-order-group-card";
+import { useState } from "react";
 
 export default function CustomerRequests() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("available");
+
   const { data: drafts, isLoading: isDraftsLoading } = useQuery({
     queryKey: ["/api/draft-orders"],
     refetchInterval: 30000,
@@ -17,6 +25,35 @@ export default function CustomerRequests() {
   const { data: emails, isLoading: isEmailsLoading } = useQuery({
     queryKey: ["/api/emails"],
     refetchInterval: 30000,
+  });
+
+  const { data: myAssignedEmails, isLoading: isAssignedLoading } = useQuery({
+    queryKey: ["/api/emails/my-assigned"],
+    refetchInterval: 30000,
+  });
+
+  const assignEmailMutation = useMutation({
+    mutationFn: async (emailId: string) => {
+      return apiRequest(`/api/emails/${emailId}/assign`, {
+        method: "POST",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/emails"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/emails/my-assigned"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      toast({
+        title: "Email assigned",
+        description: "The email has been assigned to you",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to assign email",
+        variant: "destructive",
+      });
+    },
   });
 
   const getStatusColor = (status: string) => {
@@ -32,7 +69,7 @@ export default function CustomerRequests() {
     }
   };
 
-  if (isDraftsLoading || isEmailsLoading) {
+  if (isDraftsLoading || isEmailsLoading || isAssignedLoading) {
     return (
       <div className="space-y-4" data-testid="customer-requests-loading">
         <div className="animate-pulse">
@@ -52,128 +89,190 @@ export default function CustomerRequests() {
     );
   }
 
-  const pendingDrafts = Array.isArray(drafts) ? drafts.filter((draft: any) => draft.status === "pending") : [];
-  const pendingEmails = Array.isArray(emails) ? emails.filter((email: any) => 
-    email.status === "pending" && (!Array.isArray(drafts) || !drafts.some((draft: any) => draft.emailId === email.id))
+  const availableEmails = Array.isArray(emails) ? emails.filter((email: any) => 
+    !email.processed && !email.assignedToUserId
   ) : [];
+
+  const myInProgressEmails = Array.isArray(myAssignedEmails) ? myAssignedEmails.filter((email: any) => 
+    !email.processed
+  ) : [];
+
+  const processedEmails = Array.isArray(emails) ? emails.filter((email: any) => 
+    email.processed
+  ) : [];
+
+  const pendingDrafts = Array.isArray(drafts) ? drafts.filter((draft: any) => draft.status === "pending") : [];
+
+  const renderEmailCard = (email: any, showAssignButton: boolean = false) => (
+    <Card key={email.id} className="hover:shadow-lg transition-shadow" data-testid={`email-card-${email.id}`}>
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <CardTitle className="text-lg">{email.subject}</CardTitle>
+            <div className="flex items-center gap-4 text-sm text-gray-500">
+              <div className="flex items-center gap-1">
+                <User className="h-3 w-3" />
+                <span>{email.fromEmail}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                <span>{formatDistanceToNow(new Date(email.receivedAt), { addSuffix: true })}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge className={getStatusColor(email.processed ? "processed" : "pending")}>
+              {email.processed ? "Processed" : "Pending"}
+            </Badge>
+            {email.assignedToUserId && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <UserCheck className="h-3 w-3" />
+                {email.assignedToUser?.name || "Assigned"}
+              </Badge>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {email.content && (
+            <div className="text-sm text-gray-600 line-clamp-3">
+              {email.content}
+            </div>
+          )}
+          
+          {email.assignedAt && (
+            <div className="text-xs text-gray-500 flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Assigned {format(new Date(email.assignedAt), "MMM d, yyyy 'at' h:mm a")}
+            </div>
+          )}
+
+          {showAssignButton && !email.assignedToUserId && (
+            <Button
+              onClick={() => assignEmailMutation.mutate(email.id)}
+              disabled={assignEmailMutation.isPending}
+              className="w-full"
+              data-testid={`button-assign-${email.id}`}
+            >
+              <UserCheck className="h-4 w-4 mr-2" />
+              Take to Work
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="space-y-6" data-testid="customer-requests-main">
-      {pendingDrafts.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <Package className="h-5 w-5 text-gray-500" />
-            <h2 className="text-xl font-semibold">Draft Orders ({pendingDrafts.length})</h2>
-          </div>
-          <div className="space-y-4">
-            {/* Group drafts by email */}
-            {Object.entries(
-              pendingDrafts.reduce((groups: any, draft: any) => {
-                const emailId = draft.emailId;
-                if (!groups[emailId]) {
-                  groups[emailId] = {
-                    email: draft.email ? {
-                      id: emailId,
-                      subject: draft.email.subject,
-                      fromEmail: draft.email.fromEmail,
-                      receivedAt: draft.email.receivedAt
-                    } : { 
-                      id: emailId, 
-                      subject: draft.customerReference || "Unknown", 
-                      fromEmail: draft.customerReference || "Unknown",
-                      receivedAt: draft.customerRequestDate
-                    },
-                    drafts: []
-                  };
-                }
-                groups[emailId].drafts.push(draft);
-                return groups;
-              }, {})
-            ).map(([emailId, group]: [string, any]) => (
-              <DraftOrderGroupCard 
-                key={emailId} 
-                email={group.email}
-                drafts={group.drafts}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="available" data-testid="tab-available">
+            <Mail className="h-4 w-4 mr-2" />
+            Available ({availableEmails.length})
+          </TabsTrigger>
+          <TabsTrigger value="in-progress" data-testid="tab-in-progress">
+            <UserCheck className="h-4 w-4 mr-2" />
+            In Progress ({myInProgressEmails.length})
+          </TabsTrigger>
+          <TabsTrigger value="drafts" data-testid="tab-drafts">
+            <Package className="h-4 w-4 mr-2" />
+            Draft Orders ({pendingDrafts.length})
+          </TabsTrigger>
+          <TabsTrigger value="processed" data-testid="tab-processed">
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Processed ({processedEmails.length})
+          </TabsTrigger>
+        </TabsList>
 
-      {pendingEmails.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <FileText className="h-5 w-5 text-gray-500" />
-            <h2 className="text-xl font-semibold">Unparsed Emails ({pendingEmails.length})</h2>
+        <TabsContent value="available" className="space-y-4">
+          <div className="text-lg font-semibold mb-4">
+            Available Customer Requests
           </div>
-          <div className="space-y-4">
-            {pendingEmails.map((email: any) => (
-              <Card key={email.id} className="border border-gray-200 dark:border-gray-700" data-testid={`email-${email.id}`}>
-                <CardHeader className="pb-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-start space-x-3 min-w-0 flex-1">
-                      <Mail className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-gray-900 dark:text-white truncate" data-testid={`email-subject-${email.id}`}>
-                          {email.subject}
-                        </h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate" data-testid={`email-from-${email.id}`}>
-                          From: {email.fromEmail}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between sm:justify-end space-x-2 flex-shrink-0">
-                      <Badge className={getStatusColor(email.status)} data-testid={`email-status-${email.id}`}>
-                        {email.status}
-                      </Badge>
-                      <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                        <Clock className="w-3 h-3 mr-1" />
-                        <span data-testid={`email-time-${email.id}`}>
-                          {formatDistanceToNow(new Date(email.createdAt), { addSuffix: true })}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="space-y-3">
-                    <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3" data-testid={`email-body-${email.id}`}>
-                      {email.body}
-                    </p>
-                    
-                    <div className="flex flex-col sm:flex-row gap-2 sm:justify-end pt-2">
-                      <Link href={`/email/${email.id}`}>
-                        <Button size="sm" variant="outline">
-                          <Mail className="w-4 h-4 mr-2" />
-                          View Full Email
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
+          {availableEmails.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center text-gray-500">
+                No available emails to process
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {availableEmails.map((email) => renderEmailCard(email, true))}
+            </div>
+          )}
+        </TabsContent>
 
-      {pendingDrafts.length === 0 && pendingEmails.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-8">
-            <p className="text-gray-500">No pending requests</p>
-          </CardContent>
-        </Card>
-      )}
-      
-      {(!(emails as any[]) || (emails as any[]).length === 0) && (
-        <Card className="border border-gray-200 dark:border-gray-700">
-          <CardContent className="p-12 text-center">
-            <Mail className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No customer requests</h3>
-            <p className="text-gray-500 dark:text-gray-400">Customer email requests will appear here when received.</p>
-          </CardContent>
-        </Card>
-      )}
+        <TabsContent value="in-progress" className="space-y-4">
+          <div className="text-lg font-semibold mb-4">
+            My Assigned Emails ({user?.name})
+          </div>
+          {myInProgressEmails.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center text-gray-500">
+                No emails assigned to you
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {myInProgressEmails.map((email) => renderEmailCard(email, false))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="drafts" className="space-y-4">
+          <div className="text-lg font-semibold mb-4">
+            Pending Draft Orders
+          </div>
+          {pendingDrafts.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center text-gray-500">
+                No pending draft orders
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {/* Group drafts by email */}
+              {Object.entries(
+                pendingDrafts.reduce((groups: any, draft: any) => {
+                  const emailId = draft.emailId;
+                  if (!groups[emailId]) {
+                    groups[emailId] = {
+                      email: draft.email,
+                      drafts: []
+                    };
+                  }
+                  groups[emailId].drafts.push(draft);
+                  return groups;
+                }, {})
+              ).map(([emailId, group]: [string, any]) => (
+                <DraftOrderGroupCard
+                  key={emailId}
+                  email={group.email}
+                  drafts={group.drafts}
+                />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="processed" className="space-y-4">
+          <div className="text-lg font-semibold mb-4">
+            Processed Emails
+          </div>
+          {processedEmails.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center text-gray-500">
+                No processed emails
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {processedEmails.slice(0, 20).map((email) => renderEmailCard(email, false))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

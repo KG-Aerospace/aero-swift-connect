@@ -425,6 +425,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Assign email to user
+  app.post("/api/emails/:id/assign", requireAuth, async (req, res) => {
+    try {
+      const emailId = req.params.id;
+      const userId = req.session!.userId!;
+      
+      const email = await storage.assignEmailToUser(emailId, userId);
+      
+      // Create activity
+      const user = await storage.getUser(userId);
+      await storage.createActivity({
+        type: "email_assigned",
+        description: `Email assigned to ${user?.name || 'user'}`,
+        entityType: "email",
+        entityId: emailId,
+        userId: userId
+      });
+      
+      // Broadcast real-time update
+      broadcast({ type: "email_assigned", data: { emailId, userId, userName: user?.name } });
+      
+      res.json(email);
+    } catch (error) {
+      console.error("Failed to assign email:", error);
+      res.status(500).json({ message: "Failed to assign email" });
+    }
+  });
+
+  // Get user's assigned emails
+  app.get("/api/emails/my-assigned", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session!.userId!;
+      const emails = await storage.getAssignedEmails(userId);
+      res.json(emails);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch assigned emails" });
+    }
+  });
+
   app.get("/api/emails/:id", async (req, res) => {
     try {
       const email = await storage.getEmail(req.params.id);
