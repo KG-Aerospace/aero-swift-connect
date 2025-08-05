@@ -1,7 +1,7 @@
 import { db } from "../db";
 import { draftOrders, orders, customers, emails } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
-import type { DraftOrder, InsertDraftOrder } from "@shared/schema";
+import type { DraftOrder, InsertDraftOrder, Order } from "@shared/schema";
 
 class DraftOrderService {
   async createDraftOrder(data: {
@@ -26,6 +26,14 @@ class DraftOrderService {
           urgencyLevel: data.urgencyLevel || "normal",
           status: "pending",
           notes: "",
+          customerReference: "",
+          crNumber: "",
+          requisitionNumber: "",
+          uom: "EA",
+          cheapExp: "CHEAP",
+          acType: "",
+          engineType: "",
+          comment: "",
         })
         .returning();
       
@@ -113,11 +121,11 @@ class DraftOrderService {
           customerId: draft.customerId,
           emailId: draft.emailId,
           partNumber: draft.partNumber,
-          partDescription: draft.partDescription,
+          partDescription: draft.partDescription || "",
           quantity: draft.quantity,
           urgencyLevel: draft.urgencyLevel,
           status: "verified", // Mark as verified since it went through manual review
-          notes: draft.notes,
+          notes: draft.notes || "",
         })
         .returning();
 
@@ -126,8 +134,8 @@ class DraftOrderService {
         .update(draftOrders)
         .set({
           status: "approved",
-          processedBy: "system", // Would be actual user ID in production
-          processedAt: new Date(),
+          reviewedBy: "system", // Would be actual user ID in production
+          reviewedAt: new Date(),
           updatedAt: new Date(),
         })
         .where(eq(draftOrders.id, id));
@@ -145,8 +153,8 @@ class DraftOrderService {
         .update(draftOrders)
         .set({
           status: "rejected",
-          processedBy: rejectedBy || "system",
-          processedAt: new Date(),
+          reviewedBy: rejectedBy || "system",
+          reviewedAt: new Date(),
           updatedAt: new Date(),
           notes: notes || "Rejected by user",
         })

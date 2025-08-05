@@ -167,6 +167,7 @@ export class DatabaseStorage implements IStorage {
       .from(orders)
       .leftJoin(customers, eq(orders.customerId, customers.id))
       .leftJoin(emails, eq(orders.emailId, emails.id))
+      .where(eq(orders.status, "verified")) // Only show verified orders
       .orderBy(desc(orders.createdAt))
       .limit(limit);
   }

@@ -100,13 +100,23 @@ export const draftOrders = pgTable("draft_orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   emailId: varchar("email_id").references(() => emails.id),
   customerId: varchar("customer_id").references(() => customers.id),
+  customerReference: text("customer_reference").default(""),
+  crNumber: text("cr_number").default(""),
+  requisitionNumber: text("requisition_number").default(""),
+  customerRequestDate: timestamp("customer_request_date"),
+  inputDate: timestamp("input_date").defaultNow(),
   partNumber: text("part_number").notNull(),
   partDescription: text("part_description"),
   quantity: integer("quantity").notNull(),
+  uom: text("uom").default("EA"), // Unit of Measure
+  cheapExp: text("cheap_exp").default("CHEAP"), // CHEAP/EXP
+  acType: text("ac_type").default(""), // Aircraft Type
+  engineType: text("engine_type").default(""), // Engine Type
   urgencyLevel: text("urgency_level").notNull().default("normal"), // normal, urgent, critical
   condition: text("condition").default("NE"), // NE, NS, OH, SV, AR, etc.
-  status: text("status").notNull().default("draft"), // draft, reviewed, approved, rejected
+  status: text("status").notNull().default("pending"), // pending, approved, rejected
   notes: text("notes"),
+  comment: text("comment").default(""),
   reviewedBy: varchar("reviewed_by").references(() => users.id),
   reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at").defaultNow(),
