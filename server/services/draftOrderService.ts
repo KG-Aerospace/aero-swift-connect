@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { draftOrders, orders, customers, emails } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import type { DraftOrder, InsertDraftOrder, Order } from "@shared/schema";
 
 class DraftOrderService {
@@ -32,6 +32,7 @@ class DraftOrderService {
           customerReference: data.emailFrom || "",  // Email sender
           crNumber: "",  // Will be set to ID after creation
           requisitionNumber: data.lineNumber ? data.lineNumber.toString() : "1",  // Line number
+          positionId: "", // Will be generated in ID000034 format
           customerRequestDate: data.emailDate || new Date(),  // Email date
           uom: "EA",
           cheapExp: "CHEAP",
@@ -41,11 +42,22 @@ class DraftOrderService {
         })
         .returning();
       
-      // Update with CR Number (database ID)
+      // Update with CR Number (database ID) and Position ID
       if (draft) {
+        // Get count of existing drafts to generate position ID
+        const [countResult] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(draftOrders);
+        
+        const positionNumber = (countResult.count || 0) + 1;
+        const positionId = `ID${positionNumber.toString().padStart(6, '0')}`;
+        
         const [updated] = await db
           .update(draftOrders)
-          .set({ crNumber: draft.id })
+          .set({ 
+            crNumber: draft.id,
+            positionId: positionId 
+          })
           .where(eq(draftOrders.id, draft.id))
           .returning();
         return updated;

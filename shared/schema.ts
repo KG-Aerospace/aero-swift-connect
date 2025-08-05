@@ -58,6 +58,7 @@ export const emails = pgTable("emails", {
 export const orders = pgTable("orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orderNumber: text("order_number").notNull().unique(),
+  positionId: text("position_id"), // Format: ID000034
   customerId: varchar("customer_id").references(() => customers.id),
   partNumber: text("part_number").notNull(),
   partDescription: text("part_description"),
@@ -102,7 +103,7 @@ export const draftOrders = pgTable("draft_orders", {
   customerId: varchar("customer_id").references(() => customers.id),
   customerReference: text("customer_reference").default(""),
   crNumber: text("cr_number").default(""),
-  requisitionNumber: text("requisition_number").default(""),
+  positionId: text("position_id").default(""), // Format: ID000034
   customerRequestDate: timestamp("customer_request_date"),
   inputDate: timestamp("input_date").defaultNow(),
   partNumber: text("part_number").notNull(),

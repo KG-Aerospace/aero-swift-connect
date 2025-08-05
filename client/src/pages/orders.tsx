@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Filter, Package, Clock, DollarSign, Edit, Mail } from "lucide-react";
+import { Search, Package, ShoppingCart, Users } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -13,33 +12,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Link } from "wouter";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format } from "date-fns";
 
 export default function Orders() {
-  const [editingOrder, setEditingOrder] = useState<any>(null);
-  const [editFormData, setEditFormData] = useState<any>({});
-  const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: orders, isLoading } = useQuery({
+  // Get verified orders (from approved draft orders)
+  const { data: verifiedOrders, isLoading: isOrdersLoading } = useQuery({
     queryKey: ["/api/orders"],
+    refetchInterval: 30000,
+  });
+
+  // Get procurement data (quotes, suppliers, etc.)
+  const { data: quotes, isLoading: isQuotesLoading } = useQuery({
+    queryKey: ["/api/quotes"],
     refetchInterval: 30000,
   });
 
