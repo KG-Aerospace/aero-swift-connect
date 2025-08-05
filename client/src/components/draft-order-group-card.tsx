@@ -32,10 +32,17 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
   const { toast } = useToast();
 
   // Fetch email details when needed
-  const { data: emailData } = useQuery({
-    queryKey: ["/api/emails", email.id],
+  const { data: emailData, isLoading: isEmailLoading } = useQuery<{
+    id: string;
+    fromEmail: string;
+    subject: string;
+    body: string;
+    receivedAt: string;
+    status: string;
+  }>({
+    queryKey: [`/api/emails/${email.id}`],
     enabled: !!email.id && showEmailContent,
-  }) as { data: any };
+  });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => 
@@ -180,30 +187,42 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
 
       <CardContent className="space-y-4">
         {/* Email content display */}
-        {showEmailContent && emailData && (
+        {showEmailContent && (
           <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
-            <div className="flex items-center gap-2 mb-3">
-              <Mail className="h-4 w-4 text-blue-500" />
-              <h4 className="font-medium text-gray-900 dark:text-gray-100">Original Email</h4>
-            </div>
-            <div className="space-y-2 text-sm">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                <div><strong>From:</strong> {emailData?.fromEmail || 'Unknown'}</div>
-                <div><strong>Subject:</strong> {emailData?.subject || 'Unknown'}</div>
-                <div><strong>Received:</strong> {emailData?.receivedAt ? format(new Date(emailData.receivedAt), 'PPpp') : 'Unknown'}</div>
-                <div><strong>Status:</strong> {emailData?.status || 'Unknown'}</div>
+            {isEmailLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               </div>
-              {emailData?.body && (
-                <div className="mt-3">
-                  <strong>Content:</strong>
-                  <div className="mt-1 p-3 bg-white dark:bg-gray-900 rounded border max-h-64 overflow-y-auto">
-                    <pre className="whitespace-pre-wrap text-xs font-mono text-gray-800 dark:text-gray-200">
-                      {emailData.body}
-                    </pre>
-                  </div>
+            ) : emailData ? (
+              <>
+                <div className="flex items-center gap-2 mb-3">
+                  <Mail className="h-4 w-4 text-blue-500" />
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100">Original Email</h4>
                 </div>
-              )}
-            </div>
+                <div className="space-y-2 text-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div><strong>From:</strong> {emailData.fromEmail || 'Unknown'}</div>
+                    <div><strong>Subject:</strong> {emailData.subject || 'Unknown'}</div>
+                    <div><strong>Received:</strong> {emailData.receivedAt ? format(new Date(emailData.receivedAt), 'PPpp') : 'Unknown'}</div>
+                    <div><strong>Status:</strong> {emailData.status || 'Unknown'}</div>
+                  </div>
+                  {emailData.body && (
+                    <div className="mt-3">
+                      <strong>Content:</strong>
+                      <div className="mt-1 p-3 bg-white dark:bg-gray-900 rounded border max-h-64 overflow-y-auto">
+                        <pre className="whitespace-pre-wrap text-xs font-mono text-gray-800 dark:text-gray-200">
+                          {emailData.body}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-4 text-gray-500">
+                Failed to load email content
+              </div>
+            )}
           </div>
         )}
 
