@@ -150,26 +150,26 @@ export class DatabaseStorage implements IStorage {
     return db
       .select({
         id: orders.id,
-        orderNumber: orders.orderNumber,
-        customerId: orders.customerId,
-        partNumber: orders.partNumber,
-        partDescription: orders.partDescription,
+        orderNumber: orders.order_number,
+        customerId: orders.customer_id,
+        partNumber: orders.part_number,
+        partDescription: orders.part_description,
         quantity: orders.quantity,
-        urgencyLevel: orders.urgencyLevel,
+        urgencyLevel: orders.urgency_level,
         status: orders.status,
-        totalValue: orders.totalValue,
-        emailId: orders.emailId,
+        totalValue: orders.total_value,
+        emailId: orders.email_id,
         notes: orders.notes,
-        createdAt: orders.createdAt,
-        updatedAt: orders.updatedAt,
+        createdAt: orders.created_at,
+        updatedAt: orders.updated_at,
         customer: customers,
         email: emails,
       })
       .from(orders)
-      .leftJoin(customers, eq(orders.customerId, customers.id))
-      .leftJoin(emails, eq(orders.emailId, emails.id))
-      .where(eq(orders.status, "verified")) // Only show verified orders
-      .orderBy(desc(orders.createdAt))
+      .leftJoin(customers, eq(orders.customer_id, customers.id))
+      .leftJoin(emails, eq(orders.email_id, emails.id))
+      // Show all orders, not just verified
+      .orderBy(desc(orders.created_at))
       .limit(limit);
   }
 
@@ -303,7 +303,7 @@ export class DatabaseStorage implements IStorage {
     const [totalProcessedResult] = await db
       .select({ count: count() })
       .from(emails)
-      .where(eq(emails.status, 'processed'));
+      .where(eq(emails.processed, true));
 
     // Pending quotes
     const [pendingQuotesResult] = await db
@@ -313,7 +313,7 @@ export class DatabaseStorage implements IStorage {
 
     // Total revenue (completed orders)
     const [revenueResult] = await db
-      .select({ total: sql<string>`COALESCE(SUM(${orders.totalValue}), 0)` })
+      .select({ total: sql<string>`COALESCE(SUM(${orders.total_value}), 0)` })
       .from(orders)
       .where(eq(orders.status, 'completed'));
 
@@ -324,7 +324,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         gte(emails.createdAt, today), 
         lte(emails.createdAt, tomorrow),
-        eq(emails.status, 'processed')
+        eq(emails.processed, true)
       ));
 
     const emailProcessingRate = dailyEmailsResult.count > 0 
