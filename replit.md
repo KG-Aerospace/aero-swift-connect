@@ -52,7 +52,8 @@ Preferred communication style: Simple, everyday language.
 - **Company Parser Service**: Intelligent email parser selection based on sender domain. Each airline has customized parsing logic adapted to their specific email formats and table structures. Falls back to generic table parser or AI when company-specific parser doesn't find parts.
 - **Draft Order Workflow**: Email parsing creates draft orders, which are then manually reviewed, edited, approved, or rejected in a dedicated interface. This includes a `draft_orders` table and `DraftOrderService`.
 - **CR/Requisition Numbers**: Automatic generation of unique CR (Customer Reference) and Requisition numbers in simplified formats (e.g., CR-00001, ID-00001).
-- **In Progress Tab Enhancement**: The "In Progress" tab now displays full draft order cards grouped by email instead of simple email listings. Includes procurement status indicators showing green "All items done" badge when all draft items are converted to orders, and blue badge showing count of orders with procurement requests.
+- **In Progress Tab Enhancement**: The "In Progress" tab now displays full draft order cards grouped by email instead of simple email listings. Includes procurement status indicators showing green "All items done (X sent)" badge when all draft items are converted to orders, and blue badge showing "X of Y requested" to track procurement status. Individual draft items are hidden when all items are converted to orders while keeping the email card visible.
+- **Email Assignment**: Emails can be assigned to users for dedicated work. Authentication is required for assignment functionality. Assigned emails are tracked via assignedToUserId field.
 
 ### Procurement Workflow
 - **Internal Approval System**: All supplier quotes require internal approval.

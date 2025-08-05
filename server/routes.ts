@@ -275,7 +275,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const updates = req.body;
       
-      const updatedOrder = await storage.updateOrder(id, updates);
+      // Convert date strings to Date objects if they exist and are not null/empty
+      const processedUpdates = { ...updates };
+      if (updates.createdAt && updates.createdAt !== '') {
+        processedUpdates.createdAt = new Date(updates.createdAt);
+      } else if (updates.createdAt === '') {
+        processedUpdates.createdAt = null;
+      }
+      
+      if (updates.updatedAt && updates.updatedAt !== '') {
+        processedUpdates.updatedAt = new Date(updates.updatedAt);
+      } else if (updates.updatedAt === '') {
+        processedUpdates.updatedAt = null;
+      }
+      
+      if (updates.customerRequestDate && updates.customerRequestDate !== '') {
+        processedUpdates.customerRequestDate = new Date(updates.customerRequestDate);
+      } else if (updates.customerRequestDate === '') {
+        processedUpdates.customerRequestDate = null;
+      }
+      
+      if (updates.rfqDate && updates.rfqDate !== '') {
+        processedUpdates.rfqDate = new Date(updates.rfqDate);
+      } else if (updates.rfqDate === '') {
+        processedUpdates.rfqDate = null;
+      }
+      
+      if (updates.ilsRfqDate && updates.ilsRfqDate !== '') {
+        processedUpdates.ilsRfqDate = new Date(updates.ilsRfqDate);
+      } else if (updates.ilsRfqDate === '') {
+        processedUpdates.ilsRfqDate = null;
+      }
+      
+      const updatedOrder = await storage.updateOrder(id, processedUpdates);
       
       if (!updatedOrder) {
         return res.status(404).json({ message: "Order not found" });
@@ -431,7 +463,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const emailId = req.params.id;
       const userId = req.session!.userId!;
       
+      console.log("Assigning email:", { emailId, userId, session: req.session });
+      
       const email = await storage.assignEmailToUser(emailId, userId);
+      
+      console.log("Email assigned successfully:", email);
       
       // Create activity
       const user = await storage.getUser(userId);

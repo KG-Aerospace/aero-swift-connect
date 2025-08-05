@@ -72,16 +72,19 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
 
   // Check if all draft items have been converted to orders
   const allDraftItems = drafts.length;
-  const ordersWithMatchingParts = orders.filter((order: any) => 
+  const ordersFromThisEmail = orders.filter((order: any) => 
     drafts.some((draft: any) => 
-      order.partNumber === draft.partNumber
+      order.partNumber === draft.partNumber && 
+      ((order.crNumber && draft.crNumber && order.crNumber === draft.crNumber) || 
+       (order.requisitionNumber && draft.requisitionNumber && order.requisitionNumber === draft.requisitionNumber))
     )
   );
   
-  const allItemsAdded = ordersWithMatchingParts.length >= allDraftItems && allDraftItems > 0;
+  const allItemsAdded = ordersFromThisEmail.length >= allDraftItems && allDraftItems > 0;
+  const totalOrdersSent = ordersFromThisEmail.length;
   
   // Count how many orders have been requested (have procurement requests)
-  const requestedCount = relatedOrders.filter((order: any) => 
+  const requestedCount = ordersFromThisEmail.filter((order: any) => 
     order.requested === "Yes" || order.requested === "yes" || order.requested === true
   ).length;
 
@@ -361,19 +364,21 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
             {isInProgress && allItemsAdded && (
               <Badge className="bg-green-50 text-green-700 border-green-200">
                 <CheckCircle className="h-3 w-3 mr-1" />
-                All items done
+                All items done ({totalOrdersSent} sent)
               </Badge>
             )}
             
-            {isInProgress && requestedCount > 0 && (
+            {isInProgress && allItemsAdded && requestedCount > 0 && (
               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                {requestedCount} requested
+                {requestedCount} of {totalOrdersSent} requested
               </Badge>
             )}
             
-            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-              {drafts.length} part{drafts.length > 1 ? 's' : ''}
-            </Badge>
+            {!allItemsAdded && (
+              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                {drafts.length} part{drafts.length > 1 ? 's' : ''}
+              </Badge>
+            )}
           </div>
         </div>
         
@@ -508,32 +513,35 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
           </div>
         )}
 
-        {/* Add Item and AI Analysis Buttons */}
-        <div className="flex justify-between mb-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAIAnalysis}
-            disabled={aiAnalysisMutation.isPending}
-            className="flex items-center gap-2"
-          >
-            <Sparkles className="h-4 w-4" />
-            {aiAnalysisMutation.isPending ? "Analyzing..." : "Analyze with AI"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowAddItemDialog(true)}
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Item
-          </Button>
-        </div>
+        {/* Add Item and AI Analysis Buttons - only show if not all items done */}
+        {!allItemsAdded && (
+          <div className="flex justify-between mb-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAIAnalysis}
+              disabled={aiAnalysisMutation.isPending}
+              className="flex items-center gap-2"
+            >
+              <Sparkles className="h-4 w-4" />
+              {aiAnalysisMutation.isPending ? "Analyzing..." : "Analyze with AI"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAddItemDialog(true)}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add Item
+            </Button>
+          </div>
+        )}
 
-        {/* Parts list */}
-        <div className="space-y-4">
-          {drafts.map((draft) => {
+        {/* Parts list - only show if not all items done */}
+        {!allItemsAdded && (
+          <div className="space-y-4">
+            {drafts.map((draft) => {
             const isEditing = !!editingDrafts[draft.id];
             const editData = editingDrafts[draft.id];
 
@@ -716,7 +724,8 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
               </div>
             );
           })}
-        </div>
+          </div>
+        )}
 
         {/* Add Item Dialog */}
         <Dialog open={showAddItemDialog} onOpenChange={setShowAddItemDialog}>
