@@ -25,7 +25,13 @@ interface SidebarProps {
 export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
   const [location] = useLocation();
 
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<{
+    dailyEmails: number;
+    activeOrders: number;
+    pendingQuotes: number;
+    pendingDrafts: number;
+    processedEmails: number;
+  }>({
     queryKey: ["/api/dashboard/stats"],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
@@ -41,7 +47,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
       path: "/customer-requests",
       label: "Customer Requests",
       icon: Mail,
-      badge: "47",
+      badge: stats?.pendingDrafts ? stats.pendingDrafts.toString() : undefined,
       badgeVariant: "secondary" as const,
       active: location === "/customer-requests",
     },
@@ -49,7 +55,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
       path: "/orders",
       label: "Orders",
       icon: ShoppingCart,
-      badge: (stats as any)?.activeOrders?.toString() || "124",
+      badge: stats?.activeOrders ? stats.activeOrders.toString() : undefined,
       badgeVariant: "default" as const,
       active: location === "/orders",
     },
@@ -57,7 +63,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
       path: "/quotes",
       label: "Quotes",
       icon: FileText,
-      badge: (stats as any)?.pendingQuotes?.toString() || "89",
+      badge: stats?.pendingQuotes ? stats.pendingQuotes.toString() : undefined,
       badgeVariant: "secondary" as const,
       active: location === "/quotes",
     },
