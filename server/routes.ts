@@ -266,6 +266,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/emails/:id", async (req, res) => {
+    try {
+      const email = await storage.getEmail(req.params.id);
+      if (!email) {
+        return res.status(404).json({ message: "Email not found" });
+      }
+      res.json(email);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch email" });
+    }
+  });
+
+  app.get("/api/emails/:id/orders", async (req, res) => {
+    try {
+      const orders = await storage.getOrdersByEmail(req.params.id);
+      res.json(orders);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch orders for email" });
+    }
+  });
+
   app.post("/api/emails", async (req, res) => {
     try {
       const emailData = insertEmailSchema.parse(req.body);

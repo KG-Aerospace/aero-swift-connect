@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Filter, Package, Clock, DollarSign, Edit } from "lucide-react";
+import { Plus, Search, Filter, Package, Clock, DollarSign, Edit, Mail } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -31,6 +31,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Link } from "wouter";
 
 export default function Orders() {
   const [editingOrder, setEditingOrder] = useState<any>(null);
@@ -187,6 +188,17 @@ export default function Orders() {
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
+                          {order.emailId && (
+                            <Link href={`/email/${order.emailId}`}>
+                              <Button 
+                                variant="link" 
+                                size="sm"
+                                data-testid={`view-email-${order.id}`}
+                              >
+                                <Mail className="w-4 h-4" />
+                              </Button>
+                            </Link>
+                          )}
                           <Button 
                             variant="link" 
                             size="sm"
@@ -283,6 +295,18 @@ export default function Orders() {
                 </div>
 
                 <div className="flex space-x-2 pt-2">
+                  {order.emailId && (
+                    <Link href={`/email/${order.emailId}`}>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        data-testid={`view-email-mobile-${order.id}`}
+                      >
+                        <Mail className="w-4 h-4 mr-1" />
+                        Email
+                      </Button>
+                    </Link>
+                  )}
                   <Button 
                     variant="outline" 
                     size="sm"

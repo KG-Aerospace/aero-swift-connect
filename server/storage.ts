@@ -316,6 +316,51 @@ export class DatabaseStorage implements IStorage {
       emailProcessingRate: Math.round(emailProcessingRate * 10) / 10,
     };
   }
+
+  async getEmail(id: string): Promise<Email | undefined> {
+    try {
+      const result = await db
+        .select({
+          email: emails,
+          customer: customers,
+        })
+        .from(emails)
+        .leftJoin(customers, eq(emails.customerId, customers.id))
+        .where(eq(emails.id, id));
+      
+      if (result.length === 0) return undefined;
+      
+      return {
+        ...result[0].email,
+        customer: result[0].customer || undefined,
+      } as any;
+    } catch (error) {
+      console.error("Error fetching email:", error);
+      return undefined;
+    }
+  }
+
+  async getOrdersByEmail(emailId: string): Promise<Order[]> {
+    try {
+      const result = await db
+        .select({
+          order: orders,
+          customer: customers,
+        })
+        .from(orders)
+        .leftJoin(customers, eq(orders.customerId, customers.id))
+        .where(eq(orders.emailId, emailId))
+        .orderBy(desc(orders.createdAt));
+      
+      return result.map(row => ({
+        ...row.order,
+        customer: row.customer || undefined,
+      })) as any[];
+    } catch (error) {
+      console.error("Error fetching orders by email:", error);
+      return [];
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();
