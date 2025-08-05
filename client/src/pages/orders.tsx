@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Package, Mail } from "lucide-react";
 import {
   Table,
@@ -314,17 +315,25 @@ export default function Orders() {
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs">Requested</Label>
-                      <Input 
-                        className="h-8 text-xs"
+                      <Select 
                         value={procurementData[order.id]?.requested || ''}
-                        onChange={(e) => setProcurementData({
+                        onValueChange={(value) => setProcurementData({
                           ...procurementData,
                           [order.id]: {
                             ...procurementData[order.id],
-                            requested: e.target.value
+                            requested: value
                           }
                         })}
-                      />
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">None</SelectItem>
+                          <SelectItem value="yes">Yes</SelectItem>
+                          <SelectItem value="no">No</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs">RFQ Date</Label>
