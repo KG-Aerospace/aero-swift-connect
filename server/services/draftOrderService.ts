@@ -50,12 +50,15 @@ class DraftOrderService {
           .from(draftOrders);
         
         const positionNumber = (countResult.count || 0) + 1;
-        const positionId = `ID${positionNumber.toString().padStart(6, '0')}`;
+        const positionId = `ID-${positionNumber.toString().padStart(5, '0')}`;
+        
+        // Generate CR Number with 5 digits
+        const crNumber = `CR-${positionNumber.toString().padStart(5, '0')}`;
         
         const [updated] = await db
           .update(draftOrders)
           .set({ 
-            crNumber: draft.id,
+            crNumber: crNumber,
             positionId: positionId 
           })
           .where(eq(draftOrders.id, draft.id))

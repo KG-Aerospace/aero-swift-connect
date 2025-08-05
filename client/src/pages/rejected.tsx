@@ -50,7 +50,7 @@ export default function RejectedPage() {
                     <CardTitle className="text-lg">{draft.partNumber}</CardTitle>
                   </div>
                   <div className="text-sm text-gray-500">
-                    {draft.positionId || draft.crNumber || draft.id}
+                    {draft.positionId}
                   </div>
                 </div>
               </CardHeader>

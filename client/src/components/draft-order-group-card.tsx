@@ -279,7 +279,7 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
                     <Package className="h-4 w-4 text-gray-500" />
                     <span className="font-medium">Position {draft.requisitionNumber}</span>
                     <Badge variant="outline" className="text-xs">
-                      {draft.crNumber || draft.id}
+                      {draft.crNumber}
                     </Badge>
                   </div>
                   <div className="flex gap-2">

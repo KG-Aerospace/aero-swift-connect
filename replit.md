@@ -69,6 +69,12 @@ Preferred communication style: Simple, everyday language.
   - Orders page now shows only verified orders (manual review completed)
   - Dashboard statistics updated to show draft orders and processed emails correctly
 
+### August 5, 2025 - Simplified Number Format Update
+- **CR Number Format Change**: Updated from complex timestamp format to simplified `CR-00001` pattern (5-digit unique numbers)
+- **Requisition Number Format Change**: Updated from `ID000034` to `ID-00001` pattern (5-digit unique numbers)  
+- **Database Migration**: Successfully updated all 69 existing records to use new simplified formats
+- **Enhanced Readability**: New formats provide better visual consistency and easier management
+
 ### August 5, 2025 - Automatic Field Population & Grouped Interface
 - **Automatic Field Population**: Draft orders now automatically populate key fields from email data
   - Customer Reference: Automatically filled with email sender (fromEmail)

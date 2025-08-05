@@ -129,7 +129,7 @@ export const draftOrders = pgTable("draft_orders", {
   customerReference: text("customer_reference").default(""),
   crNumber: text("cr_number").default(""),
   requisitionNumber: text("requisition_number").default(""),
-  positionId: text("position_id").default(""), // Format: ID000034
+  positionId: text("position_id").default(""), // Format: ID-00473
   customerRequestDate: timestamp("customer_request_date"),
   inputDate: timestamp("input_date").defaultNow(),
   partNumber: text("part_number").notNull(),
