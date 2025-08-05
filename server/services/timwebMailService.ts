@@ -1,9 +1,10 @@
 import Imap from "imap";
 import { simpleParser } from "mailparser";
 import { db } from "../db";
-import { emails, customers } from "@shared/schema";
+import { emails, customers, orders } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { ObjectStorageService } from "../objectStorage";
+import { airlineParserService } from "./airlineParserService";
 
 interface TimwebMailConfig {
   host: string;
@@ -337,34 +338,14 @@ export class TimwebMailService {
   }
 
   private async processAviationPartsRequest(email: any, body: string) {
-    // Basic part number extraction (improved pattern)
-    const partNumberPatterns = [
-      /P\/N[:\s]*([A-Z0-9-]{6,20})/gi,
-      /Part\s*Number[:\s]*([A-Z0-9-]{6,20})/gi,
-      /Part[:\s]*([A-Z0-9-]{6,20})/gi,
-      /([A-Z]{2,}\d{3,}[-]?[A-Z0-9]*)/g
-    ];
-
-    const quantities = body.match(/(?:quantity|qty|need|require)[:\s]*(\d+)/gi);
-    const urgencyWords = ["urgent", "asap", "critical", "emergency", "aog"];
+    // Use airline-specific parser
+    const parsingResult = airlineParserService.parseEmailByAirline(email, body);
     
-    let partNumbers: string[] = [];
-    for (const pattern of partNumberPatterns) {
-      const matches = body.match(pattern);
-      if (matches) {
-        partNumbers.push(...matches.map(match => 
-          match.replace(/P\/N[:\s]*/gi, "").replace(/Part\s*Number[:\s]*/gi, "").trim()
-        ));
-      }
-    }
-
-    if (partNumbers.length > 0) {
-      console.log(`📧 Detected aviation parts request:`, {
-        partNumbers: partNumbers.slice(0, 5), // Limit log output
-        hasQuantity: quantities !== null,
-        isUrgent: urgencyWords.some(word => body.toLowerCase().includes(word))
-      });
-
+    console.log(`📧 Detected airline: ${parsingResult.airline || "Unknown"}`);
+    
+    if (parsingResult.isAviationRequest && parsingResult.orders.length > 0) {
+      console.log(`📧 Detected aviation parts request with ${parsingResult.orders.length} parts`);
+      
       // Update email status to processing
       await db
         .update(emails)
@@ -374,14 +355,67 @@ export class TimwebMailService {
         })
         .where(eq(emails.id, email.id));
 
-      // Automatically create orders from the email
+      // Create orders from parsed results
       const { orderCreationService } = await import("./orderCreationService");
-      const createdOrders = await orderCreationService.createOrderFromEmail(email, partNumbers, body);
+      const ordersCreated = [];
       
-      if (createdOrders.length > 0) {
-        console.log(`📦 Automatically created ${createdOrders.length} orders from email`);
+      for (const parsedOrder of parsingResult.orders) {
+        try {
+          const [customer] = await db
+            .select()
+            .from(customers)
+            .where(eq(customers.id, email.customerId));
+          
+          if (!customer) {
+            console.error("Customer not found for email:", email.id);
+            continue;
+          }
+
+          const orderNumber = this.generateOrderNumber();
+          
+          const [newOrder] = await db.insert(orders).values({
+            orderNumber,
+            customerId: email.customerId,
+            emailId: email.id,
+            partNumber: parsedOrder.partNumber,
+            partDescription: parsedOrder.description || "",
+            quantity: parsedOrder.quantity,
+            urgencyLevel: parsedOrder.priority === "URGENT" ? "critical" : "normal",
+            status: "pending",
+            notes: `Condition: ${parsedOrder.condition}, Priority: ${parsedOrder.priority}`,
+          }).returning();
+          
+          ordersCreated.push(newOrder);
+          console.log(`📦 Created order ${orderNumber} for part ${parsedOrder.partNumber}`);
+        } catch (error) {
+          console.error(`Error creating order for part ${parsedOrder.partNumber}:`, error);
+        }
       }
+      
+      if (ordersCreated.length > 0) {
+        console.log(`📦 Automatically created ${ordersCreated.length} orders from email`);
+        
+        // Update email status to processed
+        await db
+          .update(emails)
+          .set({ 
+            status: "processed",
+            processedAt: new Date()
+          })
+          .where(eq(emails.id, email.id));
+      }
+    } else if (parsingResult.isAviationRequest) {
+      console.log(`📧 Aviation-related email detected but no specific parts found`);
     }
+  }
+
+  private generateOrderNumber(): string {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+    return `ORD-${year}${month}${day}-${random}`;
   }
 
   public getConnectionStatus() {

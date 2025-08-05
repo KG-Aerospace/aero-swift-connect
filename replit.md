@@ -23,6 +23,8 @@ Preferred communication style: Simple, everyday language.
 - **File Attachment Handling**: Added support for email attachments using Replit object storage
 - **Email Links**: Added email viewing functionality from orders table to see original requests
 - **Object Storage Integration**: Set up Replit object storage for file attachments with public access
+- **Airline-Specific Parsing**: Implemented comprehensive airline detection by email domain with company-specific parsers
+- **Enhanced Order Creation**: Orders now created using tailored parsing logic for each airline company (Nordwind, S7, UTair, Aeroflot, etc.)
 
 ## System Architecture
 
