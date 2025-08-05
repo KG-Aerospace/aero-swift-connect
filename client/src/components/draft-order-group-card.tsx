@@ -62,31 +62,39 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
     enabled: isInProgress,
   });
 
-  // Get orders related to these drafts by matching CR and requisition numbers
+  // Get all CR numbers from the drafts
+  const crNumbers = [...new Set(drafts.map(draft => draft.crNumber).filter(Boolean))];
+  
+  // Get orders related to these drafts by matching CR numbers
   const relatedOrders = orders.filter((order: any) => 
-    drafts.some((draft: any) => 
-      (order.crNumber && draft.crNumber && order.crNumber === draft.crNumber) || 
-      (order.requisitionNumber && draft.requisitionNumber && order.requisitionNumber === draft.requisitionNumber)
-    )
-  );
-
-  // Check if all draft items have been converted to orders
-  const allDraftItems = drafts.length;
-  const ordersFromThisEmail = orders.filter((order: any) => 
-    drafts.some((draft: any) => 
-      order.partNumber === draft.partNumber && 
-      ((order.crNumber && draft.crNumber && order.crNumber === draft.crNumber) || 
-       (order.requisitionNumber && draft.requisitionNumber && order.requisitionNumber === draft.requisitionNumber))
-    )
+    crNumbers.includes(order.crNumber)
   );
   
-  const allItemsAdded = ordersFromThisEmail.length >= allDraftItems && allDraftItems > 0;
-  const totalOrdersSent = ordersFromThisEmail.length;
+  // Count total items sent (orders created from this email)
+  const totalOrdersSent = relatedOrders.length;
   
   // Count how many orders have been requested (have procurement requests)
-  const requestedCount = ordersFromThisEmail.filter((order: any) => 
+  const requestedCount = relatedOrders.filter((order: any) => 
     order.requested === "Yes" || order.requested === "yes" || order.requested === true
   ).length;
+  
+  // Check if all draft items have been converted to orders
+  const allItemsAdded = totalOrdersSent > 0;
+  
+  // Debug logging
+  React.useEffect(() => {
+    if (isInProgress) {
+      console.log('Procurement status:', {
+        emailId: email.id,
+        crNumbers,
+        relatedOrders: relatedOrders.length,
+        totalOrdersSent,
+        requestedCount,
+        allItemsAdded,
+        drafts: drafts.length
+      });
+    }
+  }, [isInProgress, crNumbers, relatedOrders.length, totalOrdersSent, requestedCount, allItemsAdded, drafts.length, email.id]);
 
   // Fetch email details when needed
   const { data: emailData, isLoading: isEmailLoading, error: emailError } = useQuery<{
@@ -361,20 +369,20 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
             <CardTitle className="text-lg">{email.subject}</CardTitle>
           </div>
           <div className="flex items-center gap-2">
-            {isInProgress && allItemsAdded && (
+            {isInProgress && totalOrdersSent > 0 && (
               <Badge className="bg-green-50 text-green-700 border-green-200">
                 <CheckCircle className="h-3 w-3 mr-1" />
                 All items done ({totalOrdersSent} sent)
               </Badge>
             )}
             
-            {isInProgress && allItemsAdded && requestedCount > 0 && (
+            {isInProgress && requestedCount > 0 && (
               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                 {requestedCount} of {totalOrdersSent} requested
               </Badge>
             )}
             
-            {!allItemsAdded && (
+            {isInProgress && totalOrdersSent === 0 && drafts.length > 0 && (
               <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
                 {drafts.length} part{drafts.length > 1 ? 's' : ''}
               </Badge>
