@@ -277,6 +277,13 @@ Output:
 export class AIAnalysisService {
   async analyzeEmailContent(emailBody: string, emailSubject: string): Promise<ExtractedPart[]> {
     try {
+      const userContent = `Subject: ${emailSubject}\n\n${emailBody}`;
+      console.log('🤖 AI Input:', {
+        subject: emailSubject,
+        bodyLength: emailBody.length,
+        userContentPreview: userContent.substring(0, 300)
+      });
+
       // Call Deepseek API
       const response = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
@@ -293,7 +300,7 @@ export class AIAnalysisService {
             },
             {
               role: 'user',
-              content: `Subject: ${emailSubject}\n\n${emailBody}`
+              content: userContent
             }
           ],
           temperature: 0.1,
@@ -302,12 +309,19 @@ export class AIAnalysisService {
       });
 
       if (!response.ok) {
-        console.error('AI API error:', response.status, response.statusText);
-        throw new Error(`AI API error: ${response.status}`);
+        const errorText = await response.text();
+        console.error('AI API error:', response.status, response.statusText, errorText);
+        throw new Error(`AI API error: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content;
+
+      console.log('🤖 AI Response:', {
+        hasContent: !!content,
+        contentLength: content?.length || 0,
+        content: content
+      });
 
       if (!content) {
         console.error('No content in AI response');
@@ -317,13 +331,18 @@ export class AIAnalysisService {
       // Parse JSON response
       try {
         const parsed = JSON.parse(content);
+        console.log('🤖 Parsed AI Response:', parsed);
+        
         if (!Array.isArray(parsed)) {
-          console.error('AI response is not an array');
+          console.error('AI response is not an array:', typeof parsed, parsed);
           return [];
         }
+        
+        console.log(`🤖 Successfully extracted ${parsed.length} parts`);
         return parsed;
       } catch (parseError) {
-        console.error('Failed to parse AI response:', parseError, content);
+        console.error('Failed to parse AI response:', parseError);
+        console.error('Raw AI content:', content);
         return [];
       }
     } catch (error) {

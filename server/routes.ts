@@ -758,6 +758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`Analyzing email ${email.id}: subject="${email.subject}", content length=${emailContent.length}`);
+      console.log(`Email content preview:`, emailContent.substring(0, 500));
       
       const extractedParts = await aiService.analyzeEmailContent(
         emailContent,
