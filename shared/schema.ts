@@ -184,6 +184,7 @@ export const draftOrders = pgTable("draft_orders", {
   reviewedBy: varchar("reviewed_by").references(() => users.id),
   reviewedAt: timestamp("reviewed_at"),
   rejectionReason: text("rejection_reason"),
+  aiGenerated: boolean("ai_generated").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

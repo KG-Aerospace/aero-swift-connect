@@ -12,7 +12,7 @@ import { PartAutocomplete } from "./part-autocomplete";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Check, X, Edit2, Save, Package, User, Calendar, Mail, Clock, Eye, ChevronDown, ChevronUp, Hash, Plus } from "lucide-react";
+import { Check, X, Edit2, Save, Package, User, Calendar, Mail, Clock, Eye, ChevronDown, ChevronUp, Hash, Plus, Sparkles } from "lucide-react";
 import type { DraftOrder, AcType, EngineType } from "@/../../shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
 
@@ -219,6 +219,49 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
     });
   };
 
+  // AI Analysis mutation
+  const aiAnalysisMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/draft-orders/analyze-ai", {
+        emailId: email.id,
+        crNumber: drafts[0]?.crNumber || ""
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/draft-orders"] });
+      
+      if (data.error && data.error.includes("DEEPSEEK_API_KEY")) {
+        toast({
+          title: "AI Configuration Required",
+          description: "Please contact support to enable AI analysis functionality.",
+          variant: "destructive",
+        });
+      } else if (data.extractedParts && data.extractedParts.length === 0) {
+        toast({
+          title: "No Parts Found",
+          description: "AI analysis did not find any parts in this email.",
+        });
+      } else {
+        toast({
+          title: "AI Analysis Complete",
+          description: data.message || `Found ${data.extractedParts?.length || 0} parts`,
+        });
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "Analysis Failed",
+        description: error instanceof Error ? error.message : "Failed to analyze email with AI",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAIAnalysis = () => {
+    aiAnalysisMutation.mutate();
+  };
+
   const customer = drafts[0]?.customer;
 
   return (
@@ -337,8 +380,18 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
           </div>
         )}
 
-        {/* Add Item Button */}
-        <div className="flex justify-end mb-2">
+        {/* Add Item and AI Analysis Buttons */}
+        <div className="flex justify-between mb-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAIAnalysis}
+            disabled={aiAnalysisMutation.isPending}
+            className="flex items-center gap-2"
+          >
+            <Sparkles className="h-4 w-4" />
+            {aiAnalysisMutation.isPending ? "Analyzing..." : "Analyze with AI"}
+          </Button>
           <Button
             variant="outline"
             size="sm"

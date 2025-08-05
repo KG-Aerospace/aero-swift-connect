@@ -721,5 +721,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Analysis endpoint for draft orders
+  app.post("/api/draft-orders/analyze-ai", async (req, res) => {
+    try {
+      const { emailId, crNumber } = req.body;
+
+      if (!emailId || !crNumber) {
+        return res.status(400).json({ error: "Email ID and CR Number are required" });
+      }
+
+      // Check if API key is configured
+      if (!process.env.DEEPSEEK_API_KEY) {
+        return res.status(503).json({ 
+          error: "AI analysis is not configured. Please add DEEPSEEK_API_KEY to environment variables." 
+        });
+      }
+
+      // Get email content
+      const email = await storage.getEmailById(emailId);
+      if (!email) {
+        return res.status(404).json({ error: "Email not found" });
+      }
+
+      // Import AI analysis service
+      const { AIAnalysisService } = await import("./services/aiAnalysisService");
+      const aiService = new AIAnalysisService();
+
+      // Analyze email content
+      const extractedParts = await aiService.analyzeEmailContent(
+        email.body || "",
+        email.subject
+      );
+
+      if (extractedParts.length === 0) {
+        return res.json({ 
+          success: true, 
+          message: "No parts found in email",
+          extractedParts: [] 
+        });
+      }
+
+      // Create draft orders from extracted parts
+      const createdIds = await aiService.createDraftOrdersFromAnalysis(
+        emailId,
+        crNumber,
+        extractedParts
+      );
+
+      res.json({ 
+        success: true, 
+        message: `Created ${createdIds.length} draft items from AI analysis`,
+        createdIds,
+        extractedParts
+      });
+    } catch (error) {
+      console.error("AI analysis error:", error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : "AI analysis failed" 
+      });
+    }
+  });
+
   return httpServer;
 }

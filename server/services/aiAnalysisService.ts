@@ -1,0 +1,294 @@
+import { db } from "../db";
+import { draftOrders, type InsertDraftOrder } from "@shared/schema";
+import { eq, and, desc } from "drizzle-orm";
+// Utility function to generate IDs
+function generateId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+interface ExtractedPart {
+  description: string;
+  priority: string;
+  part_number: string;
+  qty: number;
+  pn_alt: string[];
+  ac_type: string;
+  remarks: string;
+  um?: string;
+}
+
+const EXTRACTION_PROMPT = `# Order Extraction Prompt
+## Context
+You are an AI assistant specializing in extracting structured data from customer order emails. Your task is to carefully analyze customer emails that contain requests for parts, description and quantities, and extract this information into a standardized JSON format.
+
+## Instructions
+1. Read the entire email carefully to identify all part descriptions, part numbers and their corresponding quantities and description.
+2. Extract each part number and quantity pair, even if they appear in different sections of the email.
+3. Handle various formats of part numbers (alphanumeric, with dashes, etc.).
+4. Identify quantity information, which may be expressed as numbers, spelled out (e.g., "five"), or with units (e.g., "5 units", "dozen").
+5. If a part is mentioned without a specific quantity, assume a quantity of 1.
+6. If multiple quantities are mentioned for the same part, use the most specific or final quantity mentioned.
+7. If there are alternates (they often appear in brackets after the part number), extract them as an array of strings and put them into pn_alt field and also to remarks field, or pass empty array when no alternates are mentioned.
+8. If there is no A/C type mentioned, pass empty string.
+9. Ignore any parts that are mentioned as "no longer needed" or "canceled".
+10. Do not include any explanatory text in your response - only output the JSON.
+11. The text after the table can contain important information about validity of the request, if so - put it into remarks field.
+12. Do not include cyrillic remarks into the remarks field, if it is in cyrillic, translate it to english and put into remarks field.
+
+## Input Format
+The input will be a customer email requesting parts.
+
+## Output Format
+Respond ONLY with a JSON array in the following format:
+
+[
+    {
+      "description": "string",
+      "priority": "string",
+      "part_number": "string",
+      "qty": number,
+      "pn_alt": ["string", "string", ...],
+      "ac_type": "string",
+      "remarks": "string" + "Alt P/N: string, string, ..."
+    },
+    ...
+]
+
+###  Important: never assign key to the array, just return array of objects
+
+## Examples
+
+### Example 1
+Input:
+
+Subject: Order Request
+Dear colleagues,\n\n\n\nPlease provide your quotation for positions below.\n\n\n\n3822478-1\n\nBALL BEARING ASSY\n\n1\n\nEA\n\n3822666-2\n\nBEARING\n\n1\n\nEA\n\n\n\n\n\nAC type:A32S\n\nBest regards!\n\n
+
+Output:
+
+[
+    {
+      "description": "BALL BEARING ASSY",
+      "priority": "Critical",
+      "part_number": "3822478-1",
+      "pn_alt": [],
+      "qty": 1,
+      "um": "EA",
+      "ac_type": "A32S",
+      "remarks": ""
+    },
+    {
+      "description": "BEARING",
+      "priority": "AOG",
+      "part_number": "3822666-2",
+      "pn_alt": [],
+      "qty": 1,
+      "um": "EA",
+      "ac_type": "A32S",
+      "remarks": ""
+    }
+]
+
+
+### Example 2
+Input:
+
+Subject: Urgent parts needed
+Dear colleagues\nQuote position NEW and OHL, stock available\n\n9978M69G40 SEAL, RETAINER CPRSR STTR   2ea\nAC type:A32S\nС уважением
+
+Output:
+
+[
+    {
+      "description": "SEAL, RETAINER CPRSR STTR",
+      "priority": "Critical",
+      "part_number": "9978M69G40",
+      "pn_alt": [],
+      "qty": 2,
+      "um": "EA",
+      "ac_type": "A32S",
+      "remarks": "Quote position NEW and OHL, stock available"
+    }
+]
+
+### Example 3
+F/A TYPE  Part No.    Description           Condition Qty Measure Unit
+A32S      3616140-11  Cooling Fan Assembly  NEW       1   EA
+A32S      3616140-11  Cooling Fan Assembly  OH        1   EA
+A32S      70723947-1  Cooling Fan Assembly  NEW       1   EA
+A32S      70723947-1  Cooling Fan Assembly  OH        1   EA
+
+Output:
+
+[
+    {
+      "description": "Cooling Fan Assembly",
+      "priority": "Routine",
+      "part_number": "3616140-11",
+      "pn_alt": [],
+      "qty": 1,
+      "um": "EA",
+      "ac_type": "A32S",
+      "remarks": "NEW or OH"
+    },
+    {
+      "description": "Cooling Fan Assembly",
+      "priority": "Routine",
+      "part_number": "70723947-1",
+      "pn_alt": [],
+      "qty": 1,
+      "um": "EA",
+      "ac_type": "A32S",
+      "remarks": "NEW or OH"
+    }
+]
+
+### Example 4
+F/A TYPE   Part No.    Description     Condition   Qty Measure Unit   Notes
+A32S   642-1000-505 (ALT 642-1000-501)  AIR INLET (NOSE COWL)  1   EA   NEW and OH / ALT 642-1000-501-1
+
+Output:
+
+[
+    {
+      "description": "AIR INLET (NOSE COWL)",
+      "priority": "Critical",
+      "part_number": "642-1000-505",
+      "pn_alt": ["642-1000-501", "642-1000-501-1"],
+      "qty": 1,
+      "um": "EA",
+      "ac_type": "A32S",
+      "remarks": "NEW and OH, Alt P/N: 642-1000-501, 642-1000-501-1"
+    }
+]
+
+## Important Notes
+- Part numbers should be extracted exactly as written in the email.
+- Quantities should be converted to numeric values.
+- Ensure all identified part number/quantity pairs are included in the response.
+- Do not add any additional fields or explanatory text to the output.
+- If no valid parts and quantities are found, return an empty array: []
+- It is very important to extract data even when the email input is different from the examples above.
+- Some tables contain reference or No column, like POR or No, ignore them and extract data from the table.
+- When there is no description for part - try to find it in the text before or after the table, and if not found use part number as description
+- The letter can be not an RFQ but a request for certificates, but mentioning some partnumbers - then return an empty array`;
+
+export class AIAnalysisService {
+  async analyzeEmailContent(emailBody: string, emailSubject: string): Promise<ExtractedPart[]> {
+    try {
+      // Call Deepseek API
+      const response = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            {
+              role: 'system',
+              content: EXTRACTION_PROMPT
+            },
+            {
+              role: 'user',
+              content: `Subject: ${emailSubject}\n\n${emailBody}`
+            }
+          ],
+          temperature: 0.1,
+          max_tokens: 4000
+        })
+      });
+
+      if (!response.ok) {
+        console.error('AI API error:', response.status, response.statusText);
+        throw new Error(`AI API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+
+      if (!content) {
+        console.error('No content in AI response');
+        return [];
+      }
+
+      // Parse JSON response
+      try {
+        const parsed = JSON.parse(content);
+        if (!Array.isArray(parsed)) {
+          console.error('AI response is not an array');
+          return [];
+        }
+        return parsed;
+      } catch (parseError) {
+        console.error('Failed to parse AI response:', parseError, content);
+        return [];
+      }
+    } catch (error) {
+      console.error('AI analysis error:', error);
+      throw error;
+    }
+  }
+
+  async createDraftOrdersFromAnalysis(
+    emailId: string,
+    crNumber: string,
+    extractedParts: ExtractedPart[]
+  ): Promise<string[]> {
+    const createdIds: string[] = [];
+
+    try {
+      // Get the highest requisition number from the same CR
+      const existingDrafts = await db
+        .select({ requisitionNumber: draftOrders.requisitionNumber })
+        .from(draftOrders)
+        .where(eq(draftOrders.crNumber, crNumber))
+        .orderBy(desc(draftOrders.requisitionNumber));
+
+      let nextPosition = 1;
+      if (existingDrafts.length > 0) {
+        // Extract the position number from the last requisition number
+        const lastReqNum = existingDrafts[0].requisitionNumber;
+        const match = lastReqNum.match(/(\d+)$/);
+        if (match) {
+          nextPosition = parseInt(match[1]) + 1;
+        }
+      }
+
+      // Create draft orders for each extracted part
+      for (const part of extractedParts) {
+        const draftId = generateId('draft');
+        const requisitionNumber = nextPosition.toString();
+
+        const insertData: InsertDraftOrder = {
+          id: draftId,
+          emailId,
+          crNumber,
+          requisitionNumber,
+          partNumber: part.part_number,
+          partDescription: part.description,
+          quantity: part.qty,
+          uom: part.um || 'EA',
+          condition: 'NE', // Default condition
+          acType: part.ac_type || null,
+          comment: part.remarks || null,
+          status: 'pending',
+          aiGenerated: true, // Mark as AI generated
+          customerReference: null,
+          customerRequestDate: null,
+          createdAt: new Date()
+        };
+
+        await db.insert(draftOrders).values(insertData);
+        createdIds.push(draftId);
+        nextPosition++;
+      }
+
+      return createdIds;
+    } catch (error) {
+      console.error('Error creating draft orders from AI analysis:', error);
+      throw error;
+    }
+  }
+}

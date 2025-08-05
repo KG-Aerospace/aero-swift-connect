@@ -33,6 +33,7 @@ export interface IStorage {
   // Emails
   getEmails(limit?: number): Promise<Email[]>;
   getEmail(id: string): Promise<Email | undefined>;
+  getEmailById(id: string): Promise<Email | undefined>;
   createEmail(email: InsertEmail): Promise<Email>;
   updateEmailStatus(id: string, status: string, customerId?: string): Promise<Email>;
   getUnprocessedEmails(limit?: number): Promise<Email[]>;
@@ -128,7 +129,15 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(emails).orderBy(desc(emails.createdAt)).limit(limit);
   }
 
+  async getEmail(id: string): Promise<Email | undefined> {
+    const [email] = await db.select().from(emails).where(eq(emails.id, id));
+    return email || undefined;
+  }
 
+  async getEmailById(id: string): Promise<Email | undefined> {
+    const [email] = await db.select().from(emails).where(eq(emails.id, id));
+    return email || undefined;
+  }
 
   async createEmail(insertEmail: InsertEmail): Promise<Email> {
     const [email] = await db.insert(emails).values(insertEmail).returning();
