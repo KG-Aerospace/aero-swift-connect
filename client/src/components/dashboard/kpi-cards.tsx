@@ -8,6 +8,8 @@ interface KPICardsProps {
     pendingQuotes: number;
     totalRevenue: string;
     emailProcessingRate: number;
+    pendingDrafts: number;
+    processedEmails: number;
   };
 }
 
@@ -16,34 +18,34 @@ export default function KPICards({ stats }: KPICardsProps) {
     {
       title: "Daily Emails Processed",
       value: stats?.dailyEmails || 0,
-      change: "+12% from yesterday",
+      change: `${stats?.processedEmails || 0} total processed`,
       trend: "up",
       icon: "📧",
       color: "blue",
     },
     {
-      title: "Active Orders",
-      value: stats?.activeOrders || 0,
-      change: "89 pending approval",
+      title: "Pending Draft Orders",
+      value: stats?.pendingDrafts || 0,
+      change: "awaiting manual review",
       trend: "neutral",
-      icon: "🛒",
+      icon: "📋",
+      color: "orange",
+    },
+    {
+      title: "Verified Orders",
+      value: stats?.activeOrders || 0,
+      change: "approved orders",
+      trend: "up",
+      icon: "✅",
       color: "green",
     },
     {
-      title: "Quote Response Rate",
+      title: "Email Processing Rate",
       value: `${stats?.emailProcessingRate || 0}%`,
-      change: "+2.1% this week",
+      change: "daily automation rate",
       trend: "up",
       icon: "📈",
       color: "yellow",
-    },
-    {
-      title: "Total Revenue",
-      value: `$${Math.round(parseFloat(stats?.totalRevenue || "0") / 1000)}K`,
-      change: "+18% this month",
-      trend: "up",
-      icon: "💰",
-      color: "purple",
     },
   ];
 

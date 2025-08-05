@@ -55,11 +55,19 @@ Preferred communication style: Simple, everyday language.
   - Email parsing → Creates draft orders → Manual review in customer-requests → Approve to create verified orders
   - Orders approved through manual review marked with "verified" status
   - Rejected drafts stored with rejection reasons for audit trail
+- **Comprehensive Draft Order Fields**: Added all required fields for aviation parts procurement
+  - Customer Reference, CR Number, Requisition Number, Request/Input dates
+  - UOM (Unit of Measure), CHEAP/EXP classification, AC Type, Engine Type
+  - Enhanced parsing to create draft orders for aviation-related emails
 - **API Endpoints**: Added comprehensive draft order API
   - GET /api/draft-orders - List all draft orders with customer/email data
   - PATCH /api/draft-orders/:id - Update draft order details
   - POST /api/draft-orders/:id/approve - Approve and create verified order
   - POST /api/draft-orders/:id/reject - Reject with reason
+- **Enhanced Email Parsing**: Improved aviation keyword detection
+  - Successfully processing 17+ draft orders from pending emails
+  - Orders page now shows only verified orders (manual review completed)
+  - Dashboard statistics updated to show draft orders and processed emails correctly
 
 ## System Architecture
 

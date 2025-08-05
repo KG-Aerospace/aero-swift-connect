@@ -1,12 +1,13 @@
 import { 
-  users, customers, suppliers, emails, orders, quotes, activities,
+  users, customers, suppliers, emails, orders, quotes, activities, draftOrders,
   type User, type InsertUser,
   type Customer, type InsertCustomer,
   type Supplier, type InsertSupplier,
   type Email, type InsertEmail,
   type Order, type InsertOrder,
   type Quote, type InsertQuote,
-  type Activity, type InsertActivity
+  type Activity, type InsertActivity,
+  type DraftOrder, type InsertDraftOrder
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql, and, gte, lte } from "drizzle-orm";
@@ -272,6 +273,8 @@ export class DatabaseStorage implements IStorage {
     pendingQuotes: number;
     totalRevenue: string;
     emailProcessingRate: number;
+    pendingDrafts: number;
+    processedEmails: number;
   }> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -284,11 +287,23 @@ export class DatabaseStorage implements IStorage {
       .from(emails)
       .where(and(gte(emails.createdAt, today), lte(emails.createdAt, tomorrow)));
 
-    // Active orders
+    // Active orders (verified orders only)
     const [activeOrdersResult] = await db
       .select({ count: count() })
       .from(orders)
-      .where(sql`${orders.status} IN ('pending', 'quoted', 'processing')`);
+      .where(eq(orders.status, 'verified'));
+
+    // Pending draft orders
+    const [pendingDraftsResult] = await db
+      .select({ count: count() })
+      .from(draftOrders)
+      .where(eq(draftOrders.status, 'pending'));
+
+    // Total processed emails
+    const [totalProcessedResult] = await db
+      .select({ count: count() })
+      .from(emails)
+      .where(eq(emails.status, 'processed'));
 
     // Pending quotes
     const [pendingQuotesResult] = await db
@@ -322,6 +337,8 @@ export class DatabaseStorage implements IStorage {
       pendingQuotes: pendingQuotesResult.count,
       totalRevenue: revenueResult.total || "0",
       emailProcessingRate: Math.round(emailProcessingRate * 10) / 10,
+      pendingDrafts: pendingDraftsResult.count,
+      processedEmails: totalProcessedResult.count,
     };
   }
 

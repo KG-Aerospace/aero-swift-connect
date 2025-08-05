@@ -134,7 +134,7 @@ class DraftOrderService {
         .update(draftOrders)
         .set({
           status: "approved",
-          reviewedBy: "system", // Would be actual user ID in production
+          reviewedBy: "627da808-4f41-45ac-9597-29a6c8471b3b", // Would be actual user ID in production
           reviewedAt: new Date(),
           updatedAt: new Date(),
         })

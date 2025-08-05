@@ -74,6 +74,9 @@ export class AirlineParserService {
   } {
     const airline = this.detectAirlineFromEmail(email.fromEmail);
     
+    // Check if this is likely an aviation request based on subject and content
+    const isLikelyAviationRequest = this.isAviationRelated(email.subject + " " + emailBody);
+    
     // Select parser based on airline
     let orders: ParsedOrder[] = [];
     let isAviationRequest = false;
@@ -116,6 +119,25 @@ export class AirlineParserService {
       const genericResult = this.parseGenericAirlineEmail(emailBody);
       orders = genericResult.orders;
       isAviationRequest = genericResult.isAviationRequest;
+    }
+    
+    // If this seems like an aviation request but we couldn't parse parts,
+    // create a generic draft order for manual review
+    if (isLikelyAviationRequest && orders.length === 0) {
+      const genericOrder: ParsedOrder = {
+        partNumber: `REQ-${Date.now()}`, // Temporary part number for manual editing
+        quantity: 1,
+        condition: "NE",
+        priority: "NORMAL",
+        description: `Manual review required - ${email.subject}`,
+        notes: "Extracted from aviation email - requires manual part number entry"
+      };
+      
+      return {
+        airline,
+        orders: [genericOrder],
+        isAviationRequest: true,
+      };
     }
     
     return { airline, orders, isAviationRequest };
@@ -548,18 +570,38 @@ export class AirlineParserService {
 
   private isAviationRelated(body: string): boolean {
     const aviationKeywords = [
-      /aircraft/i,
-      /aviation/i,
-      /aerospace/i,
-      /component/i,
-      /spare\s*part/i,
-      /maintenance/i,
-      /repair/i,
-      /overhaul/i,
-      /самолет/i,
-      /авиа/i,
-      /запчаст/i,
-      /компонент/i,
+      // Order and request patterns
+      /\border\b/i, /\brfq\b/i, /request\s+for\s+quotation/i, /quotation/i, /\bquote\b/i,
+      /purchase\s+order/i, /procurement/i, /\bpo\s/i, /\bwo\s/i, /work\s+order/i, 
+      /requisition/i, /\breq\s/i, /external\s+reference/i, /routine/i,
+      
+      // Aircraft and airline terms
+      /aircraft/i, /aviation/i, /aerospace/i, /airline/i, /flight/i,
+      /boeing/i, /airbus/i, /embraer/i, /bombardier/i, /atr/i, /sukhoi/i,
+      /b737/i, /b747/i, /b757/i, /b767/i, /b777/i, /b787/i, 
+      /a320/i, /a330/i, /a340/i, /a350/i, /a380/i,
+      /737/i, /747/i, /757/i, /767/i, /777/i, /787/i, 
+      /320/i, /330/i, /340/i, /350/i, /380/i,
+      
+      // Engine types
+      /cfm56/i, /v2500/i, /pw4000/i, /ge90/i, /trent/i, /rb211/i, /engine/i,
+      
+      // Aviation parts and components
+      /component/i, /spare\s*part/i, /part\s*number/i, /p\/n/i, /\bpn\b/i,
+      /maintenance/i, /repair/i, /overhaul/i, /technical/i, /aircraft\s*part/i,
+      /airworthy/i, /certified/i, /\bfaa\b/i, /\beasa\b/i, /\bcas\b/i,
+      /landing\s*gear/i, /avionics/i, /hydraulic/i, /pneumatic/i,
+      /fuel\s*system/i, /flight\s*control/i, /navigation/i, /communication/i,
+      /thrust\s*reverser/i, /actuator/i, /sensor/i, /valve/i, /filter/i,
+      /bracket/i, /harness/i, /cable/i, /connector/i, /switch/i, /relay/i,
+      /circuit\s*breaker/i, /fuse/i, /bulb/i, /lamp/i, /indicator/i,
+      
+      // Russian keywords  
+      /авиа/i, /самолет/i, /воздушное\s*судно/i, /запчаст/i, /компонент/i,
+      /техническое\s*обслуживание/i, /ремонт/i, /капитальный\s*ремонт/i,
+      /летная\s*годность/i, /сертификат/i, /авиационный/i, /запрос\s*цены/i,
+      /заказ/i, /закупка/i, /поставка/i, /авиакомпания/i, /аэропорт/i,
+      /двигатель/i, /шасси/i, /авионика/i, /гидравлика/i, /пневматика/i,
     ];
     
     for (const keyword of aviationKeywords) {

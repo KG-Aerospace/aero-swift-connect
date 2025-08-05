@@ -267,7 +267,10 @@ export const insertOrderSchema = createInsertSchema(orders).omit({
   updatedAt: true,
 });
 
-export const insertDraftOrderSchema = createInsertSchema(draftOrders).omit({
+export const insertDraftOrderSchema = createInsertSchema(draftOrders, {
+  customerRequestDate: z.string().transform((val) => val ? new Date(val) : null).optional(),
+  inputDate: z.string().transform((val) => val ? new Date(val) : null).optional(),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,

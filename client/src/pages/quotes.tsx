@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDistanceToNow } from "date-fns";
+import Header from "@/components/layout/header";
 
 export default function Quotes() {
   const { data: quotes, isLoading } = useQuery({
