@@ -520,6 +520,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch draft orders" });
     }
   });
+
+  // Get rejected draft orders
+  app.get("/api/draft-orders/rejected", async (_req, res) => {
+    try {
+      const rejectedDrafts = await draftOrderService.getRejectedDrafts();
+      res.json(rejectedDrafts);
+    } catch (error) {
+      console.error("Error fetching rejected draft orders:", error);
+      res.status(500).json({ message: "Failed to fetch rejected draft orders" });
+    }
+  });
   
   app.get("/api/draft-orders/email/:emailId", async (req, res) => {
     try {

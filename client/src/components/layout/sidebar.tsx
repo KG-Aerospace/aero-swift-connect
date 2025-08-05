@@ -9,7 +9,8 @@ import {
   BarChart2,
   Settings,
   User,
-  X
+  X,
+  XCircle
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
@@ -77,6 +78,12 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
       label: "Analytics",
       icon: BarChart2,
       active: location === "/analytics",
+    },
+    {
+      path: "/rejected",
+      label: "Rejected",
+      icon: XCircle,
+      active: location === "/rejected",
     },
   ];
 

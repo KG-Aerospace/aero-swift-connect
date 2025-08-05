@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +29,8 @@ interface DraftOrderGroupCardProps {
 export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps) {
   const [showEmailContent, setShowEmailContent] = useState(false);
   const [editingDrafts, setEditingDrafts] = useState<Record<string, any>>({});
+  const [rejectionDialogOpen, setRejectionDialogOpen] = useState<Record<string, boolean>>({});
+  const [rejectionReasons, setRejectionReasons] = useState<Record<string, string>>({});
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -133,9 +136,15 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
   };
 
   const handleReject = (draftId: string) => {
-    const reason = prompt("Please provide a reason for rejection:");
-    if (reason) {
+    setRejectionDialogOpen({ ...rejectionDialogOpen, [draftId]: true });
+  };
+
+  const confirmReject = (draftId: string) => {
+    const reason = rejectionReasons[draftId];
+    if (reason && reason.trim()) {
       rejectMutation.mutate({ id: draftId, notes: reason });
+      setRejectionDialogOpen({ ...rejectionDialogOpen, [draftId]: false });
+      setRejectionReasons({ ...rejectionReasons, [draftId]: "" });
     }
   };
 
@@ -298,6 +307,45 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
                           <X className="h-3 w-3 mr-1" />
                           Reject
                         </Button>
+                        
+                        <Dialog open={rejectionDialogOpen[draft.id] || false} onOpenChange={(open) => {
+                          setRejectionDialogOpen({ ...rejectionDialogOpen, [draft.id]: open });
+                          if (!open) {
+                            setRejectionReasons({ ...rejectionReasons, [draft.id]: "" });
+                          }
+                        }}>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Reject Draft Order</DialogTitle>
+                              <DialogDescription>
+                                Please provide a reason for rejecting this draft order.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <Textarea
+                                placeholder="Enter rejection reason..."
+                                value={rejectionReasons[draft.id] || ""}
+                                onChange={(e) => setRejectionReasons({ ...rejectionReasons, [draft.id]: e.target.value })}
+                                className="min-h-[100px]"
+                              />
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  onClick={() => setRejectionDialogOpen({ ...rejectionDialogOpen, [draft.id]: false })}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button 
+                                  variant="destructive" 
+                                  onClick={() => confirmReject(draft.id)}
+                                  disabled={!rejectionReasons[draft.id]?.trim()}
+                                >
+                                  Confirm Rejection
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
                       </>
                     )}
                   </div>

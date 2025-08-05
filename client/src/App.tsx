@@ -14,6 +14,7 @@ import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import Procurement from "@/pages/procurement";
 import EmailDetails from "@/pages/email-details";
+import Rejected from "@/pages/rejected";
 import { useState } from "react";
 
 function Router() {
@@ -33,6 +34,7 @@ function Router() {
             <Route path="/suppliers" component={Suppliers} />
             <Route path="/procurement" component={Procurement} />
             <Route path="/analytics" component={Analytics} />
+            <Route path="/rejected" component={Rejected} />
             <Route path="/email/:id" component={EmailDetails} />
             <Route component={NotFound} />
           </Switch>

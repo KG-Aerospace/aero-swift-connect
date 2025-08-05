@@ -193,6 +193,7 @@ class DraftOrderService {
           reviewedBy: rejectedBy || "system",
           reviewedAt: new Date(),
           updatedAt: new Date(),
+          rejectionReason: notes || "No reason provided",
           notes: notes || "Rejected by user",
         })
         .where(eq(draftOrders.id, id));
@@ -212,6 +213,22 @@ class DraftOrderService {
     const timestamp = Date.now().toString().slice(-6);
     const random = Math.floor(Math.random() * 1000).toString().padStart(3, "0");
     return `ORD-${year}${month}${day}-${timestamp}${random}`;
+  }
+
+  async getRejectedDrafts(): Promise<any[]> {
+    const rejectedDrafts = await db
+      .select({
+        ...draftOrders,
+        customer: customers,
+        email: emails,
+      })
+      .from(draftOrders)
+      .leftJoin(customers, eq(draftOrders.customerId, customers.id))
+      .leftJoin(emails, eq(draftOrders.emailId, emails.id))
+      .where(eq(draftOrders.status, "rejected"))
+      .orderBy(desc(draftOrders.reviewedAt));
+    
+    return rejectedDrafts;
   }
 }
 
