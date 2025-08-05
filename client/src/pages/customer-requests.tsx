@@ -72,7 +72,17 @@ export default function CustomerRequests() {
                 const emailId = draft.emailId;
                 if (!groups[emailId]) {
                   groups[emailId] = {
-                    email: draft.email || { id: emailId, subject: "Unknown", fromEmail: "Unknown" },
+                    email: draft.email ? {
+                      id: emailId,
+                      subject: draft.email.subject,
+                      fromEmail: draft.email.fromEmail,
+                      receivedAt: draft.email.receivedAt
+                    } : { 
+                      id: emailId, 
+                      subject: draft.customerReference || "Unknown", 
+                      fromEmail: draft.customerReference || "Unknown",
+                      receivedAt: draft.customerRequestDate
+                    },
                     drafts: []
                   };
                 }

@@ -48,6 +48,7 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
 
   // Debug logging
   React.useEffect(() => {
+    console.log('Email prop data:', email);
     if (showEmailContent) {
       console.log('Email viewing requested:', { emailId: email.id, enabled: !!email.id && showEmailContent });
     }
@@ -57,7 +58,7 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
     if (emailData) {
       console.log('Email data received:', { hasBody: !!emailData.body, hasHtml: !!emailData.bodyHtml });
     }
-  }, [showEmailContent, emailError, emailData, email.id]);
+  }, [showEmailContent, emailError, emailData, email]);
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => 
