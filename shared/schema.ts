@@ -216,6 +216,19 @@ export const insertEngineTypeSchema = createInsertSchema(engineTypes);
 export type InsertEngineType = z.infer<typeof insertEngineTypeSchema>;
 export type EngineType = typeof engineTypes.$inferSelect;
 
+// Parts table for part number and description mapping
+export const parts = pgTable("parts", {
+  id: serial("id").primaryKey(),
+  partNumber: text("part_number").notNull().unique(),
+  description: text("description").notNull(),
+  normalized: text("normalized"), // Normalized part number for searching
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPartSchema = createInsertSchema(parts);
+export type InsertPart = z.infer<typeof insertPartSchema>;
+export type Part = typeof parts.$inferSelect;
+
 // Relations
 export const emailRelations = relations(emails, ({ one, many }) => ({
   customer: one(customers, {

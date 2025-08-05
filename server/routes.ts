@@ -697,5 +697,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Parts endpoints
+  app.get("/api/parts", async (req, res) => {
+    const { partService } = await import("./services/partService");
+    const partsData = await partService.getAllParts();
+    res.json(partsData);
+  });
+
+  app.get("/api/parts/search", async (req, res) => {
+    const { partService } = await import("./services/partService");
+    const query = req.query.q as string;
+    const partsData = await partService.searchParts(query);
+    res.json(partsData);
+  });
+
+  app.get("/api/parts/:partNumber", async (req, res) => {
+    const { partService } = await import("./services/partService");
+    const part = await partService.getPartByNumber(req.params.partNumber);
+    if (part) {
+      res.json(part);
+    } else {
+      res.status(404).json({ error: "Part not found" });
+    }
+  });
+
   return httpServer;
 }

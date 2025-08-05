@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AutocompleteInput } from "@/components/ui/autocomplete-input";
+import { PartAutocomplete } from "./part-autocomplete";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -436,26 +437,19 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
 
                 {isEditing ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Part Number</Label>
-                      <Input
-                        value={editData.partNumber}
-                        onChange={(e) => setEditingDrafts({
-                          ...editingDrafts,
-                          [draft.id]: { ...editData, partNumber: e.target.value }
-                        })}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Description</Label>
-                      <Input
-                        value={editData.partDescription}
-                        onChange={(e) => setEditingDrafts({
-                          ...editingDrafts,
-                          [draft.id]: { ...editData, partDescription: e.target.value }
-                        })}
-                      />
-                    </div>
+                    <PartAutocomplete
+                      partNumber={editData.partNumber}
+                      description={editData.partDescription || ""}
+                      onPartNumberChange={(value) => setEditingDrafts({
+                        ...editingDrafts,
+                        [draft.id]: { ...editData, partNumber: value }
+                      })}
+                      onDescriptionChange={(value) => setEditingDrafts({
+                        ...editingDrafts,
+                        [draft.id]: { ...editData, partDescription: value }
+                      })}
+                      className="md:col-span-2"
+                    />
                     <div className="space-y-1">
                       <Label className="text-xs">Quantity</Label>
                       <Input
@@ -554,32 +548,18 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
             </DialogHeader>
             
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="partNumber">Part Number *</Label>
-                <Input
-                  id="partNumber"
-                  value={newItemData.partNumber}
-                  onChange={(e) => setNewItemData({ 
-                    ...newItemData, 
-                    partNumber: e.target.value 
-                  })}
-                  placeholder="Enter part number"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="partDescription">Part Description</Label>
-                <Textarea
-                  id="partDescription"
-                  value={newItemData.partDescription}
-                  onChange={(e) => setNewItemData({ 
-                    ...newItemData, 
-                    partDescription: e.target.value 
-                  })}
-                  placeholder="Enter part description"
-                  className="min-h-[80px]"
-                />
-              </div>
+              <PartAutocomplete
+                partNumber={newItemData.partNumber}
+                description={newItemData.partDescription}
+                onPartNumberChange={(value) => setNewItemData({ 
+                  ...newItemData, 
+                  partNumber: value 
+                })}
+                onDescriptionChange={(value) => setNewItemData({ 
+                  ...newItemData, 
+                  partDescription: value 
+                })}
+              />
               
               <div>
                 <Label htmlFor="quantity">Quantity *</Label>
