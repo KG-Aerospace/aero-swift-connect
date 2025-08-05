@@ -12,6 +12,9 @@ class DraftOrderService {
     condition?: string;
     urgencyLevel?: string;
     description?: string;
+    emailFrom?: string;
+    emailDate?: Date;
+    lineNumber?: number;
   }): Promise<DraftOrder | null> {
     try {
       const [draft] = await db
@@ -26,9 +29,10 @@ class DraftOrderService {
           urgencyLevel: data.urgencyLevel || "normal",
           status: "pending",
           notes: "",
-          customerReference: "",
-          crNumber: "",
-          requisitionNumber: "",
+          customerReference: data.emailFrom || "",  // Email sender
+          crNumber: "",  // Will be set to ID after creation
+          requisitionNumber: data.lineNumber ? data.lineNumber.toString() : "1",  // Line number
+          customerRequestDate: data.emailDate || new Date(),  // Email date
           uom: "EA",
           cheapExp: "CHEAP",
           acType: "",
@@ -36,6 +40,16 @@ class DraftOrderService {
           comment: "",
         })
         .returning();
+      
+      // Update with CR Number (database ID)
+      if (draft) {
+        const [updated] = await db
+          .update(draftOrders)
+          .set({ crNumber: draft.id })
+          .where(eq(draftOrders.id, draft.id))
+          .returning();
+        return updated;
+      }
       
       return draft;
     } catch (error) {

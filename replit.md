@@ -69,6 +69,25 @@ Preferred communication style: Simple, everyday language.
   - Orders page now shows only verified orders (manual review completed)
   - Dashboard statistics updated to show draft orders and processed emails correctly
 
+### August 5, 2025 - Automatic Field Population & Grouped Interface
+- **Automatic Field Population**: Draft orders now automatically populate key fields from email data
+  - Customer Reference: Automatically filled with email sender (fromEmail)
+  - CR Number: Populated with unique database ID after creation
+  - Requisition Number: Line position number for multiple parts (1, 2, 3...)
+  - Customer Request Date: Email received timestamp
+  - Part Number & Description: Parsed from email content
+- **Grouped Draft Order Interface**: Created new `DraftOrderGroupCard` component
+  - Groups multiple parts from same email in one convenient card
+  - Shows email subject, sender, and timestamps at top
+  - Each part displayed with individual edit/approve/reject controls
+  - Expandable email content viewer to verify part information
+  - Inline editing for all fields with position-based organization
+- **Enhanced User Experience**: 
+  - One card per email with all parts visible together
+  - Clear position numbers (Requisition Numbers) for each part
+  - Email viewing integrated directly in the card for verification
+  - Improved visual hierarchy showing email context and parts
+
 ## System Architecture
 
 ### Frontend Architecture

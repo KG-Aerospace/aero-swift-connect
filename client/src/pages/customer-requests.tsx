@@ -6,6 +6,7 @@ import { Mail, User, Calendar, Clock, Package, FileText } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "wouter";
 import { DraftOrderCard } from "@/components/draft-order-card";
+import { DraftOrderGroupCard } from "@/components/draft-order-group-card";
 
 export default function CustomerRequests() {
   const { data: drafts, isLoading: isDraftsLoading } = useQuery({
@@ -53,7 +54,7 @@ export default function CustomerRequests() {
 
   const pendingDrafts = Array.isArray(drafts) ? drafts.filter((draft: any) => draft.status === "pending") : [];
   const pendingEmails = Array.isArray(emails) ? emails.filter((email: any) => 
-    email.status === "pending" && !Array.isArray(drafts) ? true : !drafts.some((draft: any) => draft.emailId === email.id)
+    email.status === "pending" && (!Array.isArray(drafts) || !drafts.some((draft: any) => draft.emailId === email.id))
   ) : [];
 
   return (
@@ -65,8 +66,25 @@ export default function CustomerRequests() {
             <h2 className="text-xl font-semibold">Draft Orders ({pendingDrafts.length})</h2>
           </div>
           <div className="space-y-4">
-            {pendingDrafts.map((draft: any) => (
-              <DraftOrderCard key={draft.id} draft={draft} />
+            {/* Group drafts by email */}
+            {Object.entries(
+              pendingDrafts.reduce((groups: any, draft: any) => {
+                const emailId = draft.emailId;
+                if (!groups[emailId]) {
+                  groups[emailId] = {
+                    email: draft.email || { id: emailId, subject: "Unknown", fromEmail: "Unknown" },
+                    drafts: []
+                  };
+                }
+                groups[emailId].drafts.push(draft);
+                return groups;
+              }, {})
+            ).map(([emailId, group]: [string, any]) => (
+              <DraftOrderGroupCard 
+                key={emailId} 
+                email={group.email}
+                drafts={group.drafts}
+              />
             ))}
           </div>
         </div>

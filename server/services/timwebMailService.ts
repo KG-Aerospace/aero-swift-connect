@@ -359,7 +359,8 @@ export class TimwebMailService {
       const { draftOrderService } = await import("./draftOrderService");
       const draftsCreated = [];
       
-      for (const parsedOrder of parsingResult.orders) {
+      for (let index = 0; index < parsingResult.orders.length; index++) {
+        const parsedOrder = parsingResult.orders[index];
         try {
           const draft = await draftOrderService.createDraftOrder({
             emailId: email.id,
@@ -369,6 +370,9 @@ export class TimwebMailService {
             condition: parsedOrder.condition,
             urgencyLevel: parsedOrder.priority === "URGENT" ? "urgent" : "normal",
             description: parsedOrder.description,
+            emailFrom: email.fromEmail,
+            emailDate: email.receivedAt ? new Date(email.receivedAt) : new Date(),
+            lineNumber: index + 1,  // Position number
           });
           
           if (draft) {
