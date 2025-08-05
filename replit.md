@@ -45,7 +45,8 @@ Preferred communication style: Simple, everyday language.
 ### Email Processing System
 - **Integration**: Direct connection to Timweb mail service via IMAP
 - **Automation**: Continuous monitoring of incoming emails, smart filtering of business-relevant emails, automated customer creation from sender information.
-- **Aviation Parts Detection**: Advanced pattern matching and AI-powered extraction for part numbers, descriptions, quantities, alternates, and AC types. Includes robust validation to exclude false positives.
+- **Aviation Parts Detection**: Hybrid approach using company-specific parsers first, then AI-powered extraction as fallback. Company-specific parsers for Aeroflot, Azur Air, Pobeda, Ural Airlines, Rossiya Airlines, Yakutia, S7, Nordwind, and Lukoil. AI extraction for part numbers, descriptions, quantities, alternates, and AC types. Includes robust validation to exclude false positives.
+- **Company Parser Service**: Intelligent email parser selection based on sender domain. Each airline has customized parsing logic adapted to their specific email formats and table structures. Falls back to generic table parser or AI when company-specific parser doesn't find parts.
 - **Draft Order Workflow**: Email parsing creates draft orders, which are then manually reviewed, edited, approved, or rejected in a dedicated interface. This includes a `draft_orders` table and `DraftOrderService`.
 - **CR/Requisition Numbers**: Automatic generation of unique CR (Customer Reference) and Requisition numbers in simplified formats (e.g., CR-00001, ID-00001).
 

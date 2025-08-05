@@ -764,7 +764,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const extractedParts = await aiService.analyzeEmailContent(
         emailContent,
-        email.subject
+        email.subject,
+        email.fromEmail
       );
 
       if (extractedParts.length === 0) {
