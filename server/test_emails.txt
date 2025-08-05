@@ -1,0 +1,81 @@
+id	subject	body	company	email
+2ceca6aa-0263-42e4-a319-ebdeb4254d51	NWA//NTF	Dear team, good Day!
+
+I will be waiting for your offers for NTF flooring
+
+Manufacturer - Gerflor
+colour - 6770 BOGOTA
+493G6770
+
+BATIF AV302 ME SOLO 6770 BOGOTA
+
+FLOOR MAT - NTF
+
+500 m2
+
+
+
+Nikita Ulyushin
+Procurement Specialist
+Tel: +7 495 730 4330 Ext: 643
+LLC <NORD WIND>  |  nordwindairlines.ru<http://www.nordwindairlines.ru/>
+ [cid:image001.png@01DC05F3.AED52BB0]
+LLC <NORD WIND>
+Municipal District Aeroport, Kokkinaki str., building 4, room 2/1, Moscow, 125319, Russia
+
+	nordwindairlines	"Nikita Uliushin" <n.uliushin@nordwindairlines.ru>
+0b9edb60-33e6-45d3-95f5-f74b454f15fc	DRIVE UNIT ASSY-ANT P/N 622-5135-802 recovery	Good Afternoon, Colleagues,
+
+Could you please advise if you capable for DRIVE UNIT ASSY-ANT P/N 622-5135-802 recovery?
+
+
+Thank you,
+
+EM
+
+
+Evgeny Myzin
+
+Head of Components&Tools Turnover Group
+Группа по обороту авиационных компонентов и инструментов
+L:  +7 495 786 36 26 Ext: 427
+M: +7 905 586 04 87
+e.myzin@nw-technic.ru<mailto:e.myzin@nw-technic.ru>
+e.myzin@nordwindairlines.ru<mailto:e.myzin@nordwindairlines.ru>
+
+Nordwind Airlines  |  nordwindairlines.ru
+[cid:image001.png@01DC05F5.8FD6AED0]
+ООО «Северный Ветер» 125319, г. Москва, ул. Коккинаки, д. 4.
+
+	nordwindairlines	"Evgeny Myzin" <e.myzin@nordwindairlines.ru>
+bf6f2108-6b3e-4040-b747-77786f2382ab	RFQ RQ-0080476 // PE88001-5AA9	JUMPER ASSY	5ea	Dear team, good day
+
+Could you please provide your quotation?
+
+PE88001-5AA9
+
+JUMPER ASSY
+
+5ea
+
+
+EMB-190LR
+
+Thanks in advance!
+
+Best regards,
+
+Sergey Blokhin
+
+Specialist of component and tool's procurement group
+T: +7 495 730 43 30 Ext:481  M: +7 968 885 64 01.
+LLC Nordwind | nordwindairlines.ru
+
+[cid:image002.png@01DAEAFD.1DBBBFC0]
+
+LLC "NORD WIND"
+Municipal District Aeroport, Kokkinaki str., building 4, room 401, Moscow, 125319, Russia
+
+
+	nordwindairlines	"aogdesk" <aogdesk@nordwindairlines.ru>
+(3 rows)

@@ -28,15 +28,19 @@ Preferred communication style: Simple, everyday language.
 
 ### August 5, 2025 - Part Number Detection Improvements
 - **Enhanced Airline Parsers**: Improved part number detection algorithms for all airline-specific parsers
-  - Nordwind: Added standalone part number detection and improved pattern matching for formats like "9104A0005-01"
+  - Nordwind: Fixed detection to avoid splitting compound part descriptions (e.g., "DRIVE UNIT ASSY-ANT P/N 622-5135-802" now correctly detected as single part)
   - S7 Airlines: Added support for Cyrillic patterns and mixed format part numbers like "2313M591-1"
-  - UTair: Enhanced structured pattern detection for "Item: X Qty: Y" format
+  - UTair: Added detection for order numbers (format: P17059425) and enhanced structured pattern detection
   - All parsers now better handle aviation-specific terms like "SENSOR", "VALVE", "UNIT"
 - **Part Number Validation**: Added stricter validation to exclude:
   - Encoded/base64 strings (length > 30 or containing '/' with length > 20)
   - Common false positives (dates, simple codes, currency abbreviations)
+  - Single words that commonly appear in aviation emails (ment, ners, ASSY, DESCRIPTION)
+  - Pure letter codes (JSC, LLC, FH) and short numeric codes
+- **Generic Parser Enhancement**: Added support for order/request numbers (RQ-0006011, P17059425) commonly used by airlines
 - **Order Creation Service**: Created dedicated service with duplicate detection to prevent multiple orders for same part/email
 - **Order Number Generation**: Improved uniqueness by including timestamp and random components (format: ORD-YYYYMMDD-TTTTTTRRR)
+- **Database Cleanup**: Removed false positive orders with encoded part numbers and common words
 
 ## System Architecture
 

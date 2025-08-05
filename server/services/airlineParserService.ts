@@ -254,8 +254,12 @@ export class AirlineParserService {
     const patterns = [
       // Pattern: Item: 123-456 Qty: 2
       /Item[:\s]*([A-Z0-9\-]+).*?Qty[:\s]*(\d+)/gi,
+      // Order numbers pattern: P17059425
+      /\b(P\d{8})\b/g,
       // Standard patterns
       /(?:P\/N|PN|Part\s*Number)[:\s]*([A-Z0-9\-]+)/gi,
+      // Russian patterns
+      /(?:заказ|деталь|компонент)[:\s]*([A-Z0-9\-]+)/gi,
     ];
     
     const foundParts = new Set<string>();
@@ -280,21 +284,26 @@ export class AirlineParserService {
       }
     }
     
-    // If no structured matches, try standard patterns
+    // If no structured matches, try other patterns
     if (orders.length === 0) {
-      const standardMatches = Array.from(body.matchAll(patterns[1]));
-      for (const match of standardMatches) {
-        if (match[1]) {
-          const partNumber = match[1].trim();
-          if (this.isValidPartNumber(partNumber) && !foundParts.has(partNumber)) {
-            foundParts.add(partNumber);
-            orders.push({
-              partNumber,
-              quantity: this.extractQuantityNearPart(body, partNumber),
-              condition: this.extractCondition(body),
-              priority: this.extractPriority(body),
-              description: this.extractDescription(body, partNumber),
-            });
+      for (let i = 1; i < patterns.length; i++) {
+        const matches = Array.from(body.matchAll(patterns[i]));
+        for (const match of matches) {
+          if (match[1]) {
+            const partNumber = match[1].trim();
+            // Special handling for order numbers
+            if (patterns[i].source.includes('P\\d{8}') || this.isValidPartNumber(partNumber)) {
+              if (!foundParts.has(partNumber)) {
+                foundParts.add(partNumber);
+                orders.push({
+                  partNumber,
+                  quantity: this.extractQuantityNearPart(body, partNumber),
+                  condition: this.extractCondition(body),
+                  priority: this.extractPriority(body),
+                  description: this.extractDescription(body, partNumber),
+                });
+              }
+            }
           }
         }
       }
@@ -379,8 +388,11 @@ export class AirlineParserService {
     // Generic aviation part patterns
     const patterns = [
       /(?:P\/N|PN|Part\s*(?:Number|No\.|#)?)[:\s]*([A-Z0-9\-\/]+)/gi,
-      /\b([A-Z]{2,4}[\-\s]?\d{3,6}[\-\s]?[A-Z0-9]*)\b/g,
-      /\b(\d{3,6}[\-\s]?[A-Z]{2,4}[\-\s]?\d{0,4})\b/g,
+      /\b([A-Z]{2,4}[\-]\d{3,6}[\-]?[A-Z0-9]*)\b/g,
+      /\b(\d{3,6}[\-][A-Z]{2,4}[\-]?\d{0,4})\b/g,
+      // Order/request numbers
+      /\b(RQ[\-]\d{7})\b/g,
+      /\b(P\d{8})\b/g,
     ];
     
     const foundParts = new Set<string>();
@@ -434,6 +446,9 @@ export class AirlineParserService {
       /^\d{1,2}[\-\/]\d{1,2}[\-\/]\d{2,4}$/,  // Dates
       /^[A-Z]{1,2}\d{1,2}$/,  // Simple codes like A1, B2
       /^[A-Za-z0-9\/\+]{40,}$/,  // Base64 or encoded strings
+      /^(ment|ners|ASSY|ASSY-ANT|DESCRIPTION|UNIT|SENSOR|VALVE)$/i,  // Common words
+      /^[A-Z]{3,}$/,  // All letters (like JSC, LLC, FH)
+      /^[0-9]{1,4}$/,  // Just numbers (like 2025, 1283)
     ];
     
     for (const pattern of excludePatterns) {
@@ -508,22 +523,27 @@ export class AirlineParserService {
     const index = body.indexOf(partNumber);
     if (index === -1) return "";
     
-    // Look for description patterns
-    const patterns = [
-      /Description[:\s]*([^\n\r]{10,100})/i,
-      /\bfor\s+([^\n\r]{10,50})/i,
-    ];
+    // Look for context around the part number
+    const start = Math.max(0, index - 50);
+    const end = Math.min(body.length, index + partNumber.length + 50);
+    let context = body.substring(start, end);
     
-    const nearText = body.substring(Math.max(0, index - 100), index + partNumber.length + 100);
+    // Remove the part number itself from context
+    context = context.replace(partNumber, "").trim();
     
-    for (const pattern of patterns) {
-      const match = nearText.match(pattern);
-      if (match && match[1]) {
-        return match[1].trim();
-      }
-    }
+    // Clean up common patterns
+    context = context.replace(/P\/N|PN|Part\s*Number|Part\s*No\.|#/gi, "").trim();
+    context = context.replace(/[\s,]+/g, " ").trim();
     
-    return "";
+    // Extract meaningful words
+    const words = context.split(/\s+/).filter(word => 
+      word.length > 2 && 
+      !/^[0-9]+$/.test(word) &&
+      !/^(for|the|and|or|with|to|from|of)$/i.test(word)
+    );
+    
+    // Return first few meaningful words
+    return words.slice(0, 5).join(" ");
   }
 
   private isAviationRelated(body: string): boolean {
