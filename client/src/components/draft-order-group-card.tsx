@@ -7,11 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AutocompleteInput } from "@/components/ui/autocomplete-input";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Check, X, Edit2, Save, Package, User, Calendar, Mail, Clock, Eye, ChevronDown, ChevronUp, Hash } from "lucide-react";
-import type { DraftOrder } from "@/../../shared/schema";
+import type { DraftOrder, AcType, EngineType } from "@/../../shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
 
 interface DraftOrderGroupCardProps {
@@ -33,6 +34,15 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
   const [rejectionReasons, setRejectionReasons] = useState<Record<string, string>>({});
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Fetch AC types and engine types for autocomplete
+  const { data: acTypes = [] } = useQuery<AcType[]>({
+    queryKey: ["/api/ac-types"],
+  });
+
+  const { data: engineTypes = [] } = useQuery<EngineType[]>({
+    queryKey: ["/api/engine-types"],
+  });
 
   // Fetch email details when needed
   const { data: emailData, isLoading: isEmailLoading, error: emailError } = useQuery<{
@@ -401,6 +411,42 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">AC Type</Label>
+                      <AutocompleteInput
+                        value={editData.acType || ""}
+                        suggestions={acTypes.map(t => t.type)}
+                        onValueChange={(value) => setEditingDrafts({
+                          ...editingDrafts,
+                          [draft.id]: { ...editData, acType: value }
+                        })}
+                        placeholder="e.g., B737, A320"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Engine Type</Label>
+                      <AutocompleteInput
+                        value={editData.engineType || ""}
+                        suggestions={engineTypes.map(t => t.type)}
+                        onValueChange={(value) => setEditingDrafts({
+                          ...editingDrafts,
+                          [draft.id]: { ...editData, engineType: value }
+                        })}
+                        placeholder="e.g., CFM56, V2500"
+                      />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <Label className="text-xs">Comment</Label>
+                      <Textarea
+                        value={editData.comment || ""}
+                        onChange={(e) => setEditingDrafts({
+                          ...editingDrafts,
+                          [draft.id]: { ...editData, comment: e.target.value }
+                        })}
+                        placeholder="Additional comments..."
+                        className="min-h-[60px]"
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
@@ -410,6 +456,14 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
                     <div><strong>Condition:</strong> {draft.condition || "NE"}</div>
                     <div><strong>Customer Reference:</strong> {draft.customerReference || "—"}</div>
                     <div><strong>Customer Request Date:</strong> {draft.customerRequestDate ? new Date(draft.customerRequestDate).toLocaleDateString() : "—"}</div>
+                    <div><strong>AC Type:</strong> {draft.acType || "—"}</div>
+                    <div><strong>Engine Type:</strong> {draft.engineType || "—"}</div>
+                    {draft.comment && (
+                      <div className="md:col-span-2"><strong>Comment:</strong> {draft.comment}</div>
+                    )}
+                    {draft.comment && (
+                      <div className="md:col-span-2"><strong>Comment:</strong> {draft.comment}</div>
+                    )}
                   </div>
                 )}
               </div>

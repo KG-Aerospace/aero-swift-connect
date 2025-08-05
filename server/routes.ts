@@ -2,7 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { insertCustomerSchema, insertSupplierSchema, insertOrderSchema, insertQuoteSchema, insertEmailSchema, insertProcurementRequestSchema, insertDraftOrderSchema } from "@shared/schema";
+import { db } from "./db";
+import { orders, emails, activities, suppliers, quotes, customers, procurementRequests, draftOrders, acTypes, engineTypes, insertCustomerSchema, insertSupplierSchema, insertOrderSchema, insertQuoteSchema, insertEmailSchema, insertProcurementRequestSchema, insertDraftOrderSchema } from "@shared/schema";
 import { emailService } from "./services/emailService";
 import { supplierService } from "./services/supplierService";
 import { timwebMailService } from "./services/timwebMailService";
@@ -13,6 +14,27 @@ import { draftOrderService } from "./services/draftOrderService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
+
+  // API endpoints for AC Types and Engine Types
+  app.get("/api/ac-types", async (req, res) => {
+    try {
+      const types = await db.select().from(acTypes).orderBy(acTypes.type);
+      res.json(types);
+    } catch (error) {
+      console.error("Error fetching AC types:", error);
+      res.status(500).json({ error: "Failed to fetch AC types" });
+    }
+  });
+
+  app.get("/api/engine-types", async (req, res) => {
+    try {
+      const types = await db.select().from(engineTypes).orderBy(engineTypes.type);
+      res.json(types);
+    } catch (error) {
+      console.error("Error fetching engine types:", error);
+      res.status(500).json({ error: "Failed to fetch engine types" });
+    }
+  });
 
   // WebSocket setup
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
