@@ -23,12 +23,12 @@ export function AutocompleteInput({
 
   useEffect(() => {
     const inputValue = (value || "").toString().toLowerCase();
-    if (inputValue.length > 0) {
+    if (inputValue.length > 0 && suggestions.length > 0) {
       const filtered = suggestions.filter(s => 
         s.toLowerCase().includes(inputValue)
       ).slice(0, 10); // Limit to 10 suggestions
       setFilteredSuggestions(filtered);
-      setIsOpen(filtered.length > 0);
+      // Don't automatically show dropdown on value change - only on focus or input
     } else {
       setFilteredSuggestions([]);
       setIsOpen(false);
@@ -44,6 +44,7 @@ export function AutocompleteInput({
         !dropdownRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
+        setSelectedIndex(-1);
       }
     }
 
@@ -56,6 +57,18 @@ export function AutocompleteInput({
     if (onChange) onChange(e);
     if (onValueChange) onValueChange(newValue);
     setSelectedIndex(-1);
+    
+    // Only show dropdown if input has text and is focused
+    if (newValue.length > 0 && suggestions.length > 0) {
+      const filtered = suggestions.filter(s => 
+        s.toLowerCase().includes(newValue.toLowerCase())
+      ).slice(0, 10);
+      setFilteredSuggestions(filtered);
+      setIsOpen(filtered.length > 0);
+    } else {
+      setFilteredSuggestions([]);
+      setIsOpen(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -85,6 +98,10 @@ export function AutocompleteInput({
     }
     setIsOpen(false);
     setSelectedIndex(-1);
+    // Blur the input to prevent dropdown from reopening
+    if (inputRef.current) {
+      inputRef.current.blur();
+    }
   };
 
   return (
@@ -95,7 +112,14 @@ export function AutocompleteInput({
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
         onFocus={() => {
-          if (filteredSuggestions.length > 0) setIsOpen(true);
+          const inputValue = (value || "").toString().toLowerCase();
+          if (inputValue.length > 0 && filteredSuggestions.length > 0) {
+            setIsOpen(true);
+          }
+        }}
+        onBlur={() => {
+          // Delay closing to allow for clicks on dropdown items
+          setTimeout(() => setIsOpen(false), 100);
         }}
         className={className}
         {...props}
@@ -103,16 +127,20 @@ export function AutocompleteInput({
       {isOpen && filteredSuggestions.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto"
+          className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-auto"
         >
           {filteredSuggestions.map((suggestion, index) => (
             <div
               key={suggestion}
               className={cn(
-                "px-3 py-2 cursor-pointer hover:bg-gray-100",
-                selectedIndex === index && "bg-gray-100"
+                "px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100",
+                selectedIndex === index && "bg-gray-100 dark:bg-gray-700"
               )}
-              onClick={() => selectSuggestion(suggestion)}
+              onMouseDown={(e) => {
+                // Prevent blur event from firing before click
+                e.preventDefault();
+                selectSuggestion(suggestion);
+              }}
             >
               {suggestion}
             </div>

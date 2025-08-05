@@ -414,6 +414,7 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
                     <div className="space-y-1">
                       <Label className="text-xs">AC Type</Label>
                       <AutocompleteInput
+                        key={`ac-type-${draft.id}`}
                         value={editData.acType || ""}
                         suggestions={acTypes.map(t => t.type)}
                         onValueChange={(value) => setEditingDrafts({
@@ -426,6 +427,7 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
                     <div className="space-y-1">
                       <Label className="text-xs">Engine Type</Label>
                       <AutocompleteInput
+                        key={`engine-type-${draft.id}`}
                         value={editData.engineType || ""}
                         suggestions={engineTypes.map(t => t.type)}
                         onValueChange={(value) => setEditingDrafts({
@@ -458,9 +460,6 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
                     <div><strong>Customer Request Date:</strong> {draft.customerRequestDate ? new Date(draft.customerRequestDate).toLocaleDateString() : "—"}</div>
                     <div><strong>AC Type:</strong> {draft.acType || "—"}</div>
                     <div><strong>Engine Type:</strong> {draft.engineType || "—"}</div>
-                    {draft.comment && (
-                      <div className="md:col-span-2"><strong>Comment:</strong> {draft.comment}</div>
-                    )}
                     {draft.comment && (
                       <div className="md:col-span-2"><strong>Comment:</strong> {draft.comment}</div>
                     )}
