@@ -68,6 +68,31 @@ export const orders = pgTable("orders", {
   totalValue: decimal("total_value", { precision: 12, scale: 2 }),
   emailId: varchar("email_id").references(() => emails.id),
   notes: text("notes"),
+  
+  // Fields from draft orders - Sales section
+  crNumber: text("cr_number"),
+  requisitionNumber: text("requisition_number"),
+  customerRequestDate: timestamp("customer_request_date"),
+  uom: text("uom").default("EA"),
+  cheapExp: text("cheap_exp").default("CHEAP"),
+  acType: text("ac_type"),
+  engineType: text("engine_type"),
+  comment: text("comment"),
+  
+  // Procurement fields
+  nq: text("nq"),
+  requested: text("requested"),
+  rfqDate: text("rfq_date"),
+  ils: text("ils"),
+  rfqStatusIls: text("rfq_status_ils"),
+  ilsRfqDate: text("ils_rfq_date"),
+  others: text("others"),
+  rfqStatus: text("rfq_status"),
+  supplierQuoteReceived: text("supplier_quote_received"),
+  supplierQuoteNotes: text("supplier_quote_notes"),
+  price: text("price"),
+  poNumber: text("po_number"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -103,6 +128,7 @@ export const draftOrders = pgTable("draft_orders", {
   customerId: varchar("customer_id").references(() => customers.id),
   customerReference: text("customer_reference").default(""),
   crNumber: text("cr_number").default(""),
+  requisitionNumber: text("requisition_number").default(""),
   positionId: text("position_id").default(""), // Format: ID000034
   customerRequestDate: timestamp("customer_request_date"),
   inputDate: timestamp("input_date").defaultNow(),

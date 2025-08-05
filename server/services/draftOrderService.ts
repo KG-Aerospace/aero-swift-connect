@@ -140,7 +140,7 @@ class DraftOrderService {
       // Generate order number
       const orderNumber = this.generateOrderNumber();
 
-      // Create the order
+      // Create the order with all fields from draft
       const [order] = await db
         .insert(orders)
         .values({
@@ -153,6 +153,16 @@ class DraftOrderService {
           urgencyLevel: draft.urgencyLevel,
           status: "verified", // Mark as verified since it went through manual review
           notes: draft.notes || "",
+          // Transfer all sales fields from draft
+          positionId: draft.positionId,
+          crNumber: draft.crNumber,
+          requisitionNumber: draft.requisitionNumber,
+          customerRequestDate: draft.customerRequestDate,
+          uom: draft.uom,
+          cheapExp: draft.cheapExp,
+          acType: draft.acType,
+          engineType: draft.engineType,
+          comment: draft.comment,
         })
         .returning();
 

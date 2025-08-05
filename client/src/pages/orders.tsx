@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, Package, ShoppingCart, Users } from "lucide-react";
+import { Search, Package, Mail } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -12,21 +13,50 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Link } from "wouter";
 import { format } from "date-fns";
+
+// Helper function to extract airline name from email
+const getAirlineName = (email: string): string => {
+  const domain = email.split('@')[1]?.toLowerCase() || '';
+  
+  const airlineMap: Record<string, string> = {
+    'nordwindairlines.ru': 'Nordwind Airlines',
+    's7.ru': 'S7 Airlines',
+    'utair.ru': 'UTair',
+    'aeroflot.ru': 'Aeroflot',
+    'rossiya-airlines.com': 'Rossiya Airlines',
+    'flysmartavia.com': 'Smartavia',
+    'pobeda.aero': 'Pobeda',
+    'azurair.ru': 'AZUR air',
+    'atechnics.ru': 'Aeroflot Technics',
+    'vd-technics.com': 'Volga-Dnepr Technics',
+    'u6.ru': 'Ural Airlines',
+    'alrosa.ru': 'ALROSA',
+    'aerostartu.ru': 'Aerostar-TU',
+    'uvtaero.ru': 'UVT AERO',
+  };
+
+  for (const [key, value] of Object.entries(airlineMap)) {
+    if (domain.includes(key)) return value;
+  }
+  
+  return 'Unknown Airline';
+};
 
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingProcurement, setEditingProcurement] = useState<string | null>(null);
+  const [procurementData, setProcurementData] = useState<any>({});
+  const { toast } = useToast();
 
-  // Get verified orders (from approved draft orders)
-  const { data: verifiedOrders, isLoading: isOrdersLoading } = useQuery({
+  const { data: orders, isLoading } = useQuery({
     queryKey: ["/api/orders"],
-    refetchInterval: 30000,
-  });
-
-  // Get procurement data (quotes, suppliers, etc.)
-  const { data: quotes, isLoading: isQuotesLoading } = useQuery({
-    queryKey: ["/api/quotes"],
     refetchInterval: 30000,
   });
 
@@ -37,10 +67,10 @@ export default function Orders() {
     },
     onSuccess: () => {
       toast({
-        title: "Order updated successfully",
-        description: "The order details have been saved.",
+        title: "Procurement data updated",
+        description: "The procurement information has been saved.",
       });
-      setEditingOrder(null);
+      setEditingProcurement(null);
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
     },
     onError: (error: any) => {
@@ -52,13 +82,20 @@ export default function Orders() {
     },
   });
 
+  const handleSaveProcurement = (orderId: string) => {
+    updateOrderMutation.mutate({
+      id: orderId,
+      ...procurementData[orderId],
+    });
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
         return "bg-yellow-100 text-yellow-800";
-      case "processing":
+      case "verified":
         return "bg-green-100 text-green-800";
-      case "shipped":
+      case "processing":
         return "bg-blue-100 text-blue-800";
       case "completed":
         return "bg-purple-100 text-purple-800";
@@ -69,30 +106,28 @@ export default function Orders() {
     }
   };
 
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case "urgent":
-        return "bg-orange-100 text-orange-800";
-      case "critical":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+  const filteredOrders = Array.isArray(orders) 
+    ? orders.filter((order: any) => 
+        order.status === 'verified' && (
+          order.partNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          order.positionId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          order.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      )
+    : [];
 
   if (isLoading) {
     return (
       <div className="space-y-6" data-testid="orders-loading">
         <div className="animate-pulse">
           <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, i) => (
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
               <Card key={i}>
-                <CardContent className="p-4">
+                <CardContent className="p-6">
                   <div className="space-y-3">
                     <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
                     <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-                    <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
                   </div>
                 </CardContent>
               </Card>
@@ -105,378 +140,393 @@ export default function Orders() {
 
   return (
     <div className="space-y-6" data-testid="orders-main">
-      {/* Mobile-first Controls */}
-      <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-          <div className="relative">
-            <Input
-              type="text"
-              placeholder="Search orders..."
-              className="w-full sm:w-64 pl-10"
-              data-testid="search-orders"
-            />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          </div>
-          <Button variant="outline" className="w-full sm:w-auto" data-testid="filter-orders">
-            <Filter className="w-4 h-4 mr-2" />
-            Filter
-          </Button>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Orders Management</h1>
+        <div className="relative w-64">
+          <Input
+            type="text"
+            placeholder="Search orders..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+            data-testid="search-orders"
+          />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
         </div>
-        <Button className="w-full sm:w-auto" data-testid="new-order-button">
-          <Plus className="w-4 h-4 mr-2" />
-          New Order
-        </Button>
       </div>
 
-      {/* Desktop Table - Hidden on mobile */}
-      <Card className="hidden lg:block border border-gray-200 dark:border-gray-700">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50 dark:bg-gray-800">
-                  <TableHead>Order Number</TableHead>
-                  <TableHead>Part Number</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Urgency</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Value</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(orders as any[])?.map((order: any) => (
-                    <TableRow 
-                      key={order.id} 
-                      className="hover:bg-gray-50"
-                      data-testid={`order-row-${order.id}`}
-                    >
-                      <TableCell className="font-medium text-primary">
-                        {order.orderNumber}
-                      </TableCell>
-                      <TableCell>{order.partNumber}</TableCell>
-                      <TableCell>{order.customer?.name || "Unknown"}</TableCell>
-                      <TableCell>{order.quantity}</TableCell>
-                      <TableCell>
-                        <Badge className={getUrgencyColor(order.urgencyLevel)}>
-                          {order.urgencyLevel}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(order.status)}>
-                          {order.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>${order.totalValue || "0.00"}</TableCell>
-                      <TableCell>
-                        {new Date(order.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          {order.emailId && (
-                            <Link href={`/email/${order.emailId}`}>
-                              <Button 
-                                variant="link" 
-                                size="sm"
-                                data-testid={`view-email-${order.id}`}
-                              >
-                                <Mail className="w-4 h-4" />
-                              </Button>
-                            </Link>
-                          )}
-                          <Button 
-                            variant="link" 
-                            size="sm"
-                            data-testid={`view-order-${order.id}`}
-                          >
-                            View
-                          </Button>
-                          <Button 
-                            variant="link" 
-                            size="sm"
-                            onClick={() => {
-                              setEditingOrder(order);
-                              setEditFormData({
-                                partNumber: order.partNumber,
-                                quantity: order.quantity,
-                                urgencyLevel: order.urgencyLevel || "normal",
-                                notes: order.notes || "",
-                                partDescription: order.partDescription || "",
-                              });
-                            }}
-                            data-testid={`edit-order-${order.id}`}
-                          >
-                            Edit
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            
-            {(!(orders as any[]) || (orders as any[]).length === 0) && (
-              <div className="p-12 text-center">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No orders found</h3>
-                <p className="text-gray-500 dark:text-gray-400 mb-4">Orders will appear here when created.</p>
-                <Button data-testid="create-first-order">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create First Order
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Mobile Card Layout - Hidden on desktop */}
-        <div className="lg:hidden grid grid-cols-1 md:grid-cols-2 gap-4">
-          {(orders as any[])?.map((order: any) => (
-            <Card key={order.id} className="border border-gray-200 dark:border-gray-700" data-testid={`order-card-${order.id}`}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-semibold text-primary">
-                    {order.orderNumber}
-                  </CardTitle>
+      <div className="space-y-6">
+        {filteredOrders?.map((order: any) => (
+          <Card key={order.id} className="border-gray-200 dark:border-gray-700">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Package className="w-5 h-5 text-gray-500" />
+                  <div>
+                    <CardTitle className="text-lg">
+                      {order.positionId || order.orderNumber}
+                    </CardTitle>
+                    <p className="text-sm text-gray-500">
+                      Part Number: {order.partNumber}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
                   <Badge className={getStatusColor(order.status)}>
                     {order.status}
                   </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Package className="w-4 h-4 text-gray-500" />
-                  <span className="font-medium">{order.partNumber}</span>
-                </div>
-                
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {order.partDescription}
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-500">Customer:</span>
-                    <span className="text-sm font-medium">{order.customer?.name || "Unknown"}</span>
-                  </div>
-                  <Badge className={getUrgencyColor(order.urgencyLevel)}>
-                    {order.urgencyLevel}
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-500">Quantity:</span>
-                    <div className="font-medium">{order.quantity}</div>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Value:</span>
-                    <div className="font-medium">${order.totalValue || "0.00"}</div>
-                  </div>
-                </div>
-
-                <div className="flex items-center text-sm text-gray-500">
-                  <Clock className="w-4 h-4 mr-1" />
-                  {new Date(order.createdAt).toLocaleDateString()}
-                </div>
-
-                <div className="flex space-x-2 pt-2">
                   {order.emailId && (
                     <Link href={`/email/${order.emailId}`}>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        data-testid={`view-email-mobile-${order.id}`}
-                      >
-                        <Mail className="w-4 h-4 mr-1" />
-                        Email
+                      <Button variant="outline" size="sm">
+                        <Mail className="w-4 h-4" />
                       </Button>
                     </Link>
                   )}
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="flex-1"
-                    data-testid={`view-order-mobile-${order.id}`}
-                  >
-                    View
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => {
-                      setEditingOrder(order);
-                      setEditFormData({
-                        partNumber: order.partNumber,
-                        quantity: order.quantity,
-                        urgencyLevel: order.urgencyLevel || "normal",
-                        notes: order.notes || "",
-                        partDescription: order.partDescription || "",
-                      });
-                    }}
-                    data-testid={`edit-order-mobile-${order.id}`}
-                  >
-                    Edit
-                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-
-          {(!(orders as any[]) || (orders as any[]).length === 0) && (
-            <div className="col-span-full">
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No orders found</h3>
-                  <p className="text-gray-500 dark:text-gray-400 mb-4">Orders will appear here when created.</p>
-                  <Button data-testid="create-first-order-mobile">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create First Order
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </div>
-
-        {/* Edit Order Dialog */}
-        <Dialog open={!!editingOrder} onOpenChange={(open) => !open && setEditingOrder(null)}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Edit Order</DialogTitle>
-              <DialogDescription>
-                Update order details. The sales team can correct information as needed.
-              </DialogDescription>
-            </DialogHeader>
+              </div>
+            </CardHeader>
             
-            {editingOrder && (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  updateOrderMutation.mutate({
-                    id: editingOrder.id,
-                    ...editFormData,
-                  });
-                }}
-                className="space-y-4"
-              >
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="orderNumber">Order Number</Label>
-                    <Input
-                      id="orderNumber"
-                      value={editingOrder.orderNumber}
-                      disabled
-                      className="bg-gray-50"
-                    />
+            <CardContent className="space-y-6">
+              {/* Sales Section - Data from customer-requests */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-sm text-gray-700 dark:text-gray-300">
+                  Sales Information (from Customer Request)
+                </h3>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="text-xs">
+                        <TableHead>CR Number</TableHead>
+                        <TableHead>Requisition #</TableHead>
+                        <TableHead>Request Date</TableHead>
+                        <TableHead>Input Date</TableHead>
+                        <TableHead>Part Number</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Qty</TableHead>
+                        <TableHead>UOM</TableHead>
+                        <TableHead>CHEAP/EXP</TableHead>
+                        <TableHead>AC Type</TableHead>
+                        <TableHead>Engine Type</TableHead>
+                        <TableHead>Comment</TableHead>
+                        <TableHead>Operator</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow className="text-xs">
+                        <TableCell>{order.crNumber || order.id}</TableCell>
+                        <TableCell>{order.requisitionNumber || "1"}</TableCell>
+                        <TableCell>
+                          {order.customerRequestDate 
+                            ? format(new Date(order.customerRequestDate), 'dd/MM/yyyy')
+                            : format(new Date(order.createdAt), 'dd/MM/yyyy')}
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(order.createdAt), 'dd/MM/yyyy')}
+                        </TableCell>
+                        <TableCell className="font-medium">{order.partNumber}</TableCell>
+                        <TableCell>{order.partDescription || "-"}</TableCell>
+                        <TableCell>{order.quantity}</TableCell>
+                        <TableCell>{order.uom || "EA"}</TableCell>
+                        <TableCell>{order.cheapExp || "CHEAP"}</TableCell>
+                        <TableCell>{order.acType || "-"}</TableCell>
+                        <TableCell>{order.engineType || "-"}</TableCell>
+                        <TableCell>{order.comment || "-"}</TableCell>
+                        <TableCell>
+                          {order.customer?.email 
+                            ? getAirlineName(order.customer.email)
+                            : "Unknown"}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Procurement Section - To be filled by procurement team */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-sm text-gray-700 dark:text-gray-300">
+                    Procurement Information
+                  </h3>
+                  {editingProcurement === order.id ? (
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleSaveProcurement(order.id)}
+                      >
+                        Save
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => setEditingProcurement(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => {
+                        setEditingProcurement(order.id);
+                        setProcurementData({
+                          ...procurementData,
+                          [order.id]: {
+                            nq: order.nq || '',
+                            requested: order.requested || '',
+                            rfqDate: order.rfqDate || '',
+                            ils: order.ils || '',
+                            rfqStatusIls: order.rfqStatusIls || '',
+                            ilsRfqDate: order.ilsRfqDate || '',
+                            others: order.others || '',
+                            rfqStatus: order.rfqStatus || '',
+                            supplierQuoteReceived: order.supplierQuoteReceived || '',
+                            supplierQuoteNotes: order.supplierQuoteNotes || '',
+                            price: order.price || '',
+                            poNumber: order.poNumber || '',
+                          }
+                        });
+                      }}
+                    >
+                      Edit
+                    </Button>
+                  )}
+                </div>
+                
+                {editingProcurement === order.id ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs">NQ</Label>
+                      <Input 
+                        className="h-8 text-xs"
+                        value={procurementData[order.id]?.nq || ''}
+                        onChange={(e) => setProcurementData({
+                          ...procurementData,
+                          [order.id]: {
+                            ...procurementData[order.id],
+                            nq: e.target.value
+                          }
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Requested</Label>
+                      <Input 
+                        className="h-8 text-xs"
+                        value={procurementData[order.id]?.requested || ''}
+                        onChange={(e) => setProcurementData({
+                          ...procurementData,
+                          [order.id]: {
+                            ...procurementData[order.id],
+                            requested: e.target.value
+                          }
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">RFQ Date</Label>
+                      <Input 
+                        type="date"
+                        className="h-8 text-xs"
+                        value={procurementData[order.id]?.rfqDate || ''}
+                        onChange={(e) => setProcurementData({
+                          ...procurementData,
+                          [order.id]: {
+                            ...procurementData[order.id],
+                            rfqDate: e.target.value
+                          }
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">ILS</Label>
+                      <Input 
+                        className="h-8 text-xs"
+                        value={procurementData[order.id]?.ils || ''}
+                        onChange={(e) => setProcurementData({
+                          ...procurementData,
+                          [order.id]: {
+                            ...procurementData[order.id],
+                            ils: e.target.value
+                          }
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">RFQ Status ILS</Label>
+                      <Input 
+                        className="h-8 text-xs"
+                        value={procurementData[order.id]?.rfqStatusIls || ''}
+                        onChange={(e) => setProcurementData({
+                          ...procurementData,
+                          [order.id]: {
+                            ...procurementData[order.id],
+                            rfqStatusIls: e.target.value
+                          }
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">ILS RFQ Date</Label>
+                      <Input 
+                        type="date"
+                        className="h-8 text-xs"
+                        value={procurementData[order.id]?.ilsRfqDate || ''}
+                        onChange={(e) => setProcurementData({
+                          ...procurementData,
+                          [order.id]: {
+                            ...procurementData[order.id],
+                            ilsRfqDate: e.target.value
+                          }
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Others</Label>
+                      <Input 
+                        className="h-8 text-xs"
+                        value={procurementData[order.id]?.others || ''}
+                        onChange={(e) => setProcurementData({
+                          ...procurementData,
+                          [order.id]: {
+                            ...procurementData[order.id],
+                            others: e.target.value
+                          }
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">RFQ Status</Label>
+                      <Input 
+                        className="h-8 text-xs"
+                        value={procurementData[order.id]?.rfqStatus || ''}
+                        onChange={(e) => setProcurementData({
+                          ...procurementData,
+                          [order.id]: {
+                            ...procurementData[order.id],
+                            rfqStatus: e.target.value
+                          }
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Supplier Quote Received</Label>
+                      <Input 
+                        type="date"
+                        className="h-8 text-xs"
+                        value={procurementData[order.id]?.supplierQuoteReceived || ''}
+                        onChange={(e) => setProcurementData({
+                          ...procurementData,
+                          [order.id]: {
+                            ...procurementData[order.id],
+                            supplierQuoteReceived: e.target.value
+                          }
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label className="text-xs">Supplier Quote Notes</Label>
+                      <Textarea 
+                        className="h-16 text-xs"
+                        value={procurementData[order.id]?.supplierQuoteNotes || ''}
+                        onChange={(e) => setProcurementData({
+                          ...procurementData,
+                          [order.id]: {
+                            ...procurementData[order.id],
+                            supplierQuoteNotes: e.target.value
+                          }
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">~Price</Label>
+                      <Input 
+                        className="h-8 text-xs"
+                        value={procurementData[order.id]?.price || ''}
+                        onChange={(e) => setProcurementData({
+                          ...procurementData,
+                          [order.id]: {
+                            ...procurementData[order.id],
+                            price: e.target.value
+                          }
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">PO #</Label>
+                      <Input 
+                        className="h-8 text-xs"
+                        value={procurementData[order.id]?.poNumber || ''}
+                        onChange={(e) => setProcurementData({
+                          ...procurementData,
+                          [order.id]: {
+                            ...procurementData[order.id],
+                            poNumber: e.target.value
+                          }
+                        })}
+                      />
+                    </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="customer">Customer</Label>
-                    <Input
-                      id="customer"
-                      value={editingOrder.customer?.name || "Unknown"}
-                      disabled
-                      className="bg-gray-50"
-                    />
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="text-xs">
+                          <TableHead>NQ</TableHead>
+                          <TableHead>Requested</TableHead>
+                          <TableHead>RFQ Date</TableHead>
+                          <TableHead>ILS</TableHead>
+                          <TableHead>RFQ Status ILS</TableHead>
+                          <TableHead>ILS RFQ Date</TableHead>
+                          <TableHead>Others</TableHead>
+                          <TableHead>RFQ Status</TableHead>
+                          <TableHead>Supplier Quote Received</TableHead>
+                          <TableHead>Supplier Quote Notes</TableHead>
+                          <TableHead>~Price</TableHead>
+                          <TableHead>PO #</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow className="text-xs">
+                          <TableCell>{order.nq || "-"}</TableCell>
+                          <TableCell>{order.requested || "-"}</TableCell>
+                          <TableCell>{order.rfqDate || "-"}</TableCell>
+                          <TableCell>{order.ils || "-"}</TableCell>
+                          <TableCell>{order.rfqStatusIls || "-"}</TableCell>
+                          <TableCell>{order.ilsRfqDate || "-"}</TableCell>
+                          <TableCell>{order.others || "-"}</TableCell>
+                          <TableCell>{order.rfqStatus || "-"}</TableCell>
+                          <TableCell>{order.supplierQuoteReceived || "-"}</TableCell>
+                          <TableCell>{order.supplierQuoteNotes || "-"}</TableCell>
+                          <TableCell>{order.price || "-"}</TableCell>
+                          <TableCell>{order.poNumber || "-"}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
                   </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="partNumber">Part Number *</Label>
-                    <Input
-                      id="partNumber"
-                      value={editFormData.partNumber}
-                      onChange={(e) =>
-                        setEditFormData({ ...editFormData, partNumber: e.target.value })
-                      }
-                      required
-                      placeholder="e.g., MS24665-156"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="quantity">Quantity *</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      min="1"
-                      value={editFormData.quantity}
-                      onChange={(e) =>
-                        setEditFormData({ ...editFormData, quantity: parseInt(e.target.value) })
-                      }
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="partDescription">Part Description</Label>
-                  <Input
-                    id="partDescription"
-                    value={editFormData.partDescription}
-                    onChange={(e) =>
-                      setEditFormData({ ...editFormData, partDescription: e.target.value })
-                    }
-                    placeholder="e.g., Screw, Machine"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="urgencyLevel">Urgency Level</Label>
-                  <Select
-                    value={editFormData.urgencyLevel}
-                    onValueChange={(value) =>
-                      setEditFormData({ ...editFormData, urgencyLevel: value })
-                    }
-                  >
-                    <SelectTrigger id="urgencyLevel">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="normal">Normal</SelectItem>
-                      <SelectItem value="urgent">Urgent</SelectItem>
-                      <SelectItem value="critical">Critical (AOG)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes / Delivery Requirements</Label>
-                  <Textarea
-                    id="notes"
-                    value={editFormData.notes}
-                    onChange={(e) =>
-                      setEditFormData({ ...editFormData, notes: e.target.value })
-                    }
-                    placeholder="Any special requirements or notes..."
-                    rows={3}
-                  />
-                </div>
-                
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setEditingOrder(null)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={updateOrderMutation.isPending}
-                  >
-                    {updateOrderMutation.isPending ? "Saving..." : "Save Changes"}
-                  </Button>
-                </div>
-              </form>
-            )}
-          </DialogContent>
-        </Dialog>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
-    );
-  }
+
+      {(!filteredOrders || filteredOrders.length === 0) && (
+        <Card className="border-gray-200 dark:border-gray-700">
+          <CardContent className="p-12 text-center">
+            <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              No verified orders found
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400">
+              Verified orders from approved customer requests will appear here.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
