@@ -747,9 +747,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { AIAnalysisService } = await import("./services/aiAnalysisService");
       const aiService = new AIAnalysisService();
 
-      // Analyze email content
+      // Analyze email content - use content field, fallback to htmlContent, then empty string
+      const emailContent = email.content || email.htmlContent || "";
+      if (!emailContent.trim()) {
+        return res.json({ 
+          success: true, 
+          message: "Email has no content to analyze",
+          extractedParts: [] 
+        });
+      }
+
+      console.log(`Analyzing email ${email.id}: subject="${email.subject}", content length=${emailContent.length}`);
+      
       const extractedParts = await aiService.analyzeEmailContent(
-        email.body || "",
+        emailContent,
         email.subject
       );
 
