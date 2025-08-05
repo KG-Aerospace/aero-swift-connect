@@ -12,7 +12,8 @@ import { PartAutocomplete } from "./part-autocomplete";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Check, X, Edit2, Save, Package, User, Calendar, Mail, Clock, Eye, ChevronDown, ChevronUp, Hash, Plus, Sparkles } from "lucide-react";
+import { Check, X, Edit2, Save, Package, User, Calendar, Mail, Clock, Eye, ChevronDown, ChevronUp, Hash, Plus, Sparkles, UserCheck } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import type { DraftOrder, AcType, EngineType } from "@/../../shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
 
@@ -22,6 +23,7 @@ interface DraftOrderGroupCardProps {
     subject: string;
     fromEmail: string;
     receivedAt?: string;
+    assignedToUserId?: string | null;
   };
   drafts: (DraftOrder & {
     customer?: { name: string; company: string | null } | null;
@@ -41,6 +43,7 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
   });
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Fetch AC types and engine types for autocomplete
   const { data: acTypes = [] } = useQuery<AcType[]>({
@@ -85,7 +88,7 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => 
-      apiRequest("PATCH", `/api/draft-orders/${id}`, data),
+      apiRequest(`/api/draft-orders/${id}`, { method: "PATCH", body: data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/draft-orders"] });
       toast({
@@ -97,7 +100,7 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
 
   const approveMutation = useMutation({
     mutationFn: (id: string) => 
-      apiRequest("POST", `/api/draft-orders/${id}/approve`),
+      apiRequest(`/api/draft-orders/${id}/approve`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/draft-orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
@@ -110,7 +113,7 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
 
   const rejectMutation = useMutation({
     mutationFn: ({ id, notes }: { id: string; notes: string }) => 
-      apiRequest("POST", `/api/draft-orders/${id}/reject`, { notes }),
+      apiRequest(`/api/draft-orders/${id}/reject`, { method: "POST", body: { notes } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/draft-orders"] });
       toast({
@@ -176,8 +179,7 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
       partDescription: string; 
       quantity: number;
     }) => {
-      const response = await apiRequest("POST", "/api/draft-orders/add-item", data);
-      return response.json();
+      return await apiRequest("/api/draft-orders/add-item", { method: "POST", body: data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/draft-orders"] });
@@ -222,11 +224,13 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
   // AI Analysis mutation
   const aiAnalysisMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/draft-orders/analyze-ai", {
-        emailId: email.id,
-        crNumber: drafts[0]?.crNumber || ""
+      return await apiRequest("/api/draft-orders/analyze-ai", { 
+        method: "POST", 
+        body: {
+          emailId: email.id,
+          crNumber: drafts[0]?.crNumber || ""
+        }
       });
-      return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/draft-orders"] });
@@ -261,6 +265,31 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
   const handleAIAnalysis = () => {
     aiAnalysisMutation.mutate();
   };
+
+  // Email assignment mutation
+  const assignEmailMutation = useMutation({
+    mutationFn: async (emailId: string) => {
+      return apiRequest(`/api/emails/${emailId}/assign`, {
+        method: "POST",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/emails"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/emails/my-assigned"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/draft-orders"] });
+      toast({
+        title: "Email assigned",
+        description: "The email has been assigned to you",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to assign email",
+        variant: "destructive",
+      });
+    },
+  });
 
   const customer = drafts[0]?.customer;
 
@@ -298,28 +327,44 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
             </div>
           </div>
           
-          {/* Email view button */}
-          <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              View original email content to verify part information
+          {/* Action buttons */}
+          <div className="flex items-center justify-between gap-3">
+            {/* Take to Work button */}
+            {!email.assignedToUserId && (
+              <Button
+                onClick={() => assignEmailMutation.mutate(email.id)}
+                disabled={assignEmailMutation.isPending}
+                className="flex-1"
+                data-testid={`button-assign-${email.id}`}
+              >
+                <UserCheck className="h-4 w-4 mr-2" />
+                Take to Work
+              </Button>
+            )}
+            
+            {/* Email view button */}
+            <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded-lg flex-1">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                View original email content to verify part information
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowEmailContent(!showEmailContent)}
+                className="ml-3 flex-shrink-0"
+              >
+                <Eye className="h-4 w-4 mr-1" />
+                {showEmailContent ? (
+                  <>
+                    Hide <ChevronUp className="h-3 w-3 ml-1" />
+                  </>
+                ) : (
+                  <>
+                    View <ChevronDown className="h-3 w-3 ml-1" />
+                  </>
+                )}
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowEmailContent(!showEmailContent)}
-              className="ml-3 flex-shrink-0"
-            >
-              <Eye className="h-4 w-4 mr-1" />
-              {showEmailContent ? (
-                <>
-                  Hide <ChevronUp className="h-3 w-3 ml-1" />
-                </>
-              ) : (
-                <>
-                  View <ChevronDown className="h-3 w-3 ml-1" />
-                </>
-              )}
-            </Button>
           </div>
         </div>
       </CardHeader>

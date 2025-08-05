@@ -54,7 +54,7 @@ export function DraftOrderCard({ draft }: DraftOrderCardProps) {
 
   const updateMutation = useMutation({
     mutationFn: (data: typeof editData) => 
-      apiRequest("PATCH", `/api/draft-orders/${draft.id}`, data),
+      apiRequest(`/api/draft-orders/${draft.id}`, { method: "PATCH", body: data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/draft-orders"] });
       setIsEditing(false);
@@ -67,7 +67,7 @@ export function DraftOrderCard({ draft }: DraftOrderCardProps) {
 
   const approveMutation = useMutation({
     mutationFn: () => 
-      apiRequest("POST", `/api/draft-orders/${draft.id}/approve`),
+      apiRequest(`/api/draft-orders/${draft.id}/approve`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/draft-orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
@@ -80,7 +80,7 @@ export function DraftOrderCard({ draft }: DraftOrderCardProps) {
 
   const rejectMutation = useMutation({
     mutationFn: (notes: string) => 
-      apiRequest("POST", `/api/draft-orders/${draft.id}/reject`, { notes }),
+      apiRequest(`/api/draft-orders/${draft.id}/reject`, { method: "POST", body: { notes } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/draft-orders"] });
       toast({
