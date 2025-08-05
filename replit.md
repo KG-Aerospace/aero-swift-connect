@@ -19,6 +19,10 @@ Preferred communication style: Simple, everyday language.
 - **New Procurement Page**: Added dedicated UI for managing procurement requests with approve/reject functionality
 - **Enhanced Customer Requests**: Modified to create internal procurement requests instead of direct supplier quotes
 - **Database Schema Update**: Added procurement_requests table with comprehensive tracking fields
+- **HTML Email Support**: Implemented HTML email rendering with proper formatting in email details view
+- **File Attachment Handling**: Added support for email attachments using Replit object storage
+- **Email Links**: Added email viewing functionality from orders table to see original requests
+- **Object Storage Integration**: Set up Replit object storage for file attachments with public access
 
 ## System Architecture
 

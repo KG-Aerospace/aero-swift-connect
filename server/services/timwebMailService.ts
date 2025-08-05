@@ -3,6 +3,7 @@ import { simpleParser } from "mailparser";
 import { db } from "../db";
 import { emails, customers } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { ObjectStorageService } from "../objectStorage";
 
 interface TimwebMailConfig {
   host: string;
@@ -186,7 +187,8 @@ export class TimwebMailService {
     try {
       const fromEmail = parsed.from?.text || parsed.from?.value?.[0]?.address || "";
       const subject = parsed.subject || "No Subject";
-      const body = parsed.text || parsed.html || "";
+      const body = parsed.text || "";
+      const bodyHtml = parsed.html || "";
 
       // Skip non-business emails (basic filtering)
       if (this.isSpamOrNonBusiness(subject, body, fromEmail)) {
@@ -197,6 +199,32 @@ export class TimwebMailService {
       // Find or create customer
       let customer = await this.findOrCreateCustomer(fromEmail, parsed);
       
+      // Process attachments
+      const attachmentData = [];
+      if (parsed.attachments && parsed.attachments.length > 0) {
+        const objectStorageService = new ObjectStorageService();
+        
+        for (const attachment of parsed.attachments) {
+          try {
+            // Upload attachment to object storage
+            const objectPath = await objectStorageService.uploadEmailAttachment(
+              attachment.filename || "attachment",
+              attachment.content,
+              attachment.contentType || "application/octet-stream"
+            );
+            
+            attachmentData.push({
+              filename: attachment.filename || "attachment",
+              contentType: attachment.contentType || "application/octet-stream",
+              size: attachment.size || attachment.content.length,
+              objectPath: objectPath
+            });
+          } catch (error) {
+            console.error(`📧 Error uploading attachment ${attachment.filename}:`, error);
+          }
+        }
+      }
+      
       // Save email to database
       const [savedEmail] = await db
         .insert(emails)
@@ -204,6 +232,8 @@ export class TimwebMailService {
           fromEmail: fromEmail,
           subject,
           body: body.substring(0, 5000), // Limit body length
+          bodyHtml: bodyHtml ? bodyHtml.substring(0, 50000) : null, // Store HTML version
+          attachments: attachmentData.length > 0 ? attachmentData : null,
           status: "pending",
           customerId: customer.id,
           receivedAt: new Date(),
@@ -213,7 +243,7 @@ export class TimwebMailService {
       console.log(`📧 Saved email: ${subject} from ${fromEmail}`);
 
       // Process the email for aviation parts requests
-      await this.processAviationPartsRequest(savedEmail, body);
+      await this.processAviationPartsRequest(savedEmail, body || bodyHtml);
 
     } catch (error) {
       console.error("📧 Error saving email to database:", error);

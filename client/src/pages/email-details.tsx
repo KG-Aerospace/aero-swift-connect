@@ -91,9 +91,39 @@ export default function EmailDetails() {
             <div>
               <h3 className="font-semibold mb-2">Email Content</h3>
               <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                <pre className="whitespace-pre-wrap text-sm font-mono">{email.body}</pre>
+                {email.bodyHtml ? (
+                  <div 
+                    className="prose dark:prose-invert max-w-none"
+                    dangerouslySetInnerHTML={{ __html: email.bodyHtml }}
+                  />
+                ) : (
+                  <pre className="whitespace-pre-wrap text-sm font-mono">{email.body}</pre>
+                )}
               </div>
             </div>
+
+            {email.attachments && email.attachments.length > 0 && (
+              <div>
+                <h3 className="font-semibold mb-2">Attachments</h3>
+                <div className="space-y-2">
+                  {email.attachments.map((attachment: any, index: number) => (
+                    <a 
+                      key={index}
+                      href={attachment.objectPath}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <Package className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm font-medium">{attachment.filename}</span>
+                      <span className="text-xs text-gray-500">
+                        ({(attachment.size / 1024).toFixed(1)} KB)
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {orders && orders.length > 0 && (
               <div>

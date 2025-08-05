@@ -8,6 +8,7 @@ import { supplierService } from "./services/supplierService";
 import { timwebMailService } from "./services/timwebMailService";
 import { supplierQuoteParser } from "./services/supplierQuoteParser";
 import { procurementRequestService } from "./services/procurementRequestService";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -489,6 +490,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       res.status(500).json({ message: "Failed to reject procurement request" });
+    }
+  });
+
+  // Object storage routes
+  app.get("/objects/:objectPath(*)", async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(
+        req.path
+      );
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error checking object access:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
     }
   });
 

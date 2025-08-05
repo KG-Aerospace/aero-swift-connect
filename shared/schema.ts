@@ -40,6 +40,13 @@ export const emails = pgTable("emails", {
   fromEmail: text("from_email").notNull(),
   subject: text("subject").notNull(),
   body: text("body").notNull(),
+  bodyHtml: text("body_html"),
+  attachments: jsonb("attachments").$type<Array<{
+    filename: string;
+    contentType: string;
+    size: number;
+    objectPath?: string;
+  }>>(),
   processedAt: timestamp("processed_at"),
   receivedAt: timestamp("received_at").defaultNow(),
   status: text("status").notNull().default("pending"), // pending, processed, failed

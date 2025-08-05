@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Mail, User, Calendar, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { Link } from "wouter";
 
 export default function CustomerRequests() {
   const { data: emails, isLoading } = useQuery({
@@ -95,6 +97,12 @@ export default function CustomerRequests() {
               )}
               
               <div className="flex flex-col sm:flex-row gap-2 sm:justify-end pt-2">
+                <Link href={`/email/${email.id}`}>
+                  <Button size="sm" variant="outline">
+                    <Mail className="w-4 h-4 mr-2" />
+                    View Full Email
+                  </Button>
+                </Link>
                 {email.status === "processed" ? (
                   <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
                     Processed - Order Created
@@ -104,7 +112,6 @@ export default function CustomerRequests() {
                     Processing
                   </Badge>
                 )}
-
               </div>
             </div>
           </CardContent>
