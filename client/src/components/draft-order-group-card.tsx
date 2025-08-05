@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
   const { toast } = useToast();
 
   // Fetch email details when needed
-  const { data: emailData, isLoading: isEmailLoading } = useQuery<{
+  const { data: emailData, isLoading: isEmailLoading, error: emailError } = useQuery<{
     id: string;
     fromEmail: string;
     subject: string;
@@ -43,7 +43,21 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
   }>({
     queryKey: ["/api/emails", email.id],
     enabled: !!email.id && showEmailContent,
+    retry: 1,
   });
+
+  // Debug logging
+  React.useEffect(() => {
+    if (showEmailContent) {
+      console.log('Email viewing requested:', { emailId: email.id, enabled: !!email.id && showEmailContent });
+    }
+    if (emailError) {
+      console.error('Email fetch error:', emailError);
+    }
+    if (emailData) {
+      console.log('Email data received:', { hasBody: !!emailData.body, hasHtml: !!emailData.bodyHtml });
+    }
+  }, [showEmailContent, emailError, emailData, email.id]);
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => 
@@ -228,7 +242,15 @@ export function DraftOrderGroupCard({ email, drafts }: DraftOrderGroupCardProps)
               </>
             ) : (
               <div className="text-center py-4 text-gray-500">
-                Failed to load email content
+                <div>Failed to load email content</div>
+                {emailError && (
+                  <div className="text-xs mt-2 text-red-500">
+                    Error: {emailError.message}
+                  </div>
+                )}
+                <div className="text-xs mt-1">
+                  Email ID: {email.id}
+                </div>
               </div>
             )}
           </div>
