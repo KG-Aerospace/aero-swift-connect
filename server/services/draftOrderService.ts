@@ -46,7 +46,7 @@ class DraftOrderService {
 
   async getAllDrafts(): Promise<(DraftOrder & { 
     customer?: { name: string; company: string | null } | null; 
-    email?: { subject: string; fromEmail: string } | null 
+    email?: { subject: string; fromEmail: string; receivedAt?: string } | null 
   })[]> {
     const results = await db
       .select({
@@ -68,6 +68,7 @@ class DraftOrderService {
       email: row.email ? {
         subject: row.email.subject,
         fromEmail: row.email.fromEmail,
+        receivedAt: row.email.receivedAt?.toISOString(),
       } : null,
     }));
   }

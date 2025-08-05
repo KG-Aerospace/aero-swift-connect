@@ -9,18 +9,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Check, X, Edit2, Save, Package, User, Calendar } from "lucide-react";
+import { Check, X, Edit2, Save, Package, User, Calendar, Mail, Clock, Eye, ChevronDown, ChevronUp } from "lucide-react";
 import type { DraftOrder } from "@/../../shared/schema";
+import { useQuery } from "@tanstack/react-query";
+import { formatDistanceToNow, format } from "date-fns";
 
 interface DraftOrderCardProps {
   draft: DraftOrder & {
     customer?: { name: string; company: string | null } | null;
-    email?: { subject: string; fromEmail: string } | null;
+    email?: { subject: string; fromEmail: string; receivedAt?: string } | null;
   };
 }
 
 export function DraftOrderCard({ draft }: DraftOrderCardProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [showEmailContent, setShowEmailContent] = useState(false);
   const [editData, setEditData] = useState({
     customerReference: draft.customerReference || "",
     crNumber: draft.crNumber || "",
@@ -42,6 +45,12 @@ export function DraftOrderCard({ draft }: DraftOrderCardProps) {
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  // Fetch email details when needed
+  const { data: emailData } = useQuery({
+    queryKey: ["/api/emails", draft.emailId],
+    enabled: !!draft.emailId && showEmailContent,
+  }) as { data: any };
 
   const updateMutation = useMutation({
     mutationFn: (data: typeof editData) => 
@@ -119,13 +128,60 @@ export function DraftOrderCard({ draft }: DraftOrderCardProps) {
           </Badge>
         </div>
         
-        {draft.customer && (
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <User className="h-4 w-4" />
-            <span>{draft.customer.name}</span>
-            {draft.customer.company && <span>({draft.customer.company})</span>}
+        <div className="space-y-2">
+          {draft.customer && (
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <User className="h-4 w-4" />
+              <span>{draft.customer.name}</span>
+              {draft.customer.company && <span>({draft.customer.company})</span>}
+            </div>
+          )}
+          
+          {/* Timestamps */}
+          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+            {draft.email && (
+              <div className="flex items-center gap-1">
+                <Mail className="h-4 w-4" />
+                <span>Email: {draft.email.receivedAt ? formatDistanceToNow(new Date(draft.email.receivedAt)) : 'Unknown'} ago</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1">
+              <Clock className="h-4 w-4" />
+              <span>Draft: {formatDistanceToNow(new Date(draft.createdAt))} ago</span>
+            </div>
           </div>
-        )}
+          
+          {/* Email subject and view button */}
+          {draft.email && (
+            <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                  {draft.email.subject}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  From: {draft.email.fromEmail}
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowEmailContent(!showEmailContent)}
+                className="ml-3 flex-shrink-0"
+              >
+                <Eye className="h-4 w-4 mr-1" />
+                {showEmailContent ? (
+                  <>
+                    Hide <ChevronUp className="h-3 w-3 ml-1" />
+                  </>
+                ) : (
+                  <>
+                    View <ChevronDown className="h-3 w-3 ml-1" />
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -288,6 +344,46 @@ export function DraftOrderCard({ draft }: DraftOrderCardProps) {
             {draft.comment && (
               <div className="md:col-span-2"><strong>Comment:</strong> {draft.comment}</div>
             )}
+          </div>
+        )}
+
+        {/* Email content display */}
+        {showEmailContent && emailData && (
+          <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+            <div className="flex items-center gap-2 mb-3">
+              <Mail className="h-4 w-4 text-blue-500" />
+              <h4 className="font-medium text-gray-900 dark:text-gray-100">Original Email</h4>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div><strong>From:</strong> {emailData?.fromEmail || 'Unknown'}</div>
+                <div><strong>Subject:</strong> {emailData?.subject || 'Unknown'}</div>
+                <div><strong>Received:</strong> {emailData?.receivedAt ? format(new Date(emailData.receivedAt), 'PPpp') : 'Unknown'}</div>
+                <div><strong>Status:</strong> {emailData?.status || 'Unknown'}</div>
+              </div>
+              {emailData?.body && (
+                <div className="mt-3">
+                  <strong>Content:</strong>
+                  <div className="mt-1 p-3 bg-white dark:bg-gray-900 rounded border max-h-64 overflow-y-auto">
+                    <pre className="whitespace-pre-wrap text-xs font-mono text-gray-800 dark:text-gray-200">
+                      {emailData.body}
+                    </pre>
+                  </div>
+                </div>
+              )}
+              {emailData?.attachments && Array.isArray(emailData.attachments) && emailData.attachments.length > 0 && (
+                <div className="mt-3">
+                  <strong>Attachments:</strong>
+                  <div className="mt-1 space-y-1">
+                    {emailData.attachments.map((attachment: any, index: number) => (
+                      <div key={index} className="text-xs text-blue-600 dark:text-blue-400">
+                        📎 {attachment.filename || `Attachment ${index + 1}`}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

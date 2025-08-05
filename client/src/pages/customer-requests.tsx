@@ -51,10 +51,10 @@ export default function CustomerRequests() {
     );
   }
 
-  const pendingDrafts = drafts?.filter((draft: any) => draft.status === "pending") || [];
-  const pendingEmails = emails?.filter((email: any) => 
-    email.status === "pending" && !drafts?.some((draft: any) => draft.emailId === email.id)
-  ) || [];
+  const pendingDrafts = Array.isArray(drafts) ? drafts.filter((draft: any) => draft.status === "pending") : [];
+  const pendingEmails = Array.isArray(emails) ? emails.filter((email: any) => 
+    email.status === "pending" && !Array.isArray(drafts) ? true : !drafts.some((draft: any) => draft.emailId === email.id)
+  ) : [];
 
   return (
     <div className="space-y-6" data-testid="customer-requests-main">
