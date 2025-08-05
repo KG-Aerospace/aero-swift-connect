@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { orders, emails, activities, suppliers, quotes, customers, procurementRequests, draftOrders, acTypes, engineTypes, insertCustomerSchema, insertSupplierSchema, insertOrderSchema, insertQuoteSchema, insertEmailSchema, insertProcurementRequestSchema, insertDraftOrderSchema } from "@shared/schema";
 import { emailService } from "./services/emailService";
 import { supplierService } from "./services/supplierService";
@@ -11,9 +11,139 @@ import { supplierQuoteParser } from "./services/supplierQuoteParser";
 import { procurementRequestService } from "./services/procurementRequestService";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { draftOrderService } from "./services/draftOrderService";
+import { authService } from "./services/authService";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+
+// Extend Express Request type to include user
+declare module 'express-serve-static-core' {
+  interface Request {
+    session?: session.Session & Partial<session.SessionData> & {
+      userId?: string;
+    };
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
+
+  // Configure session middleware
+  const pgStore = connectPgSimple(session);
+  app.use(
+    session({
+      store: new pgStore({
+        pool,
+        tableName: 'sessions',
+      }),
+      secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+      },
+    })
+  );
+
+  // Authentication middleware
+  const requireAuth = async (req: any, res: any, next: any) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    next();
+  };
+
+  // Authentication routes
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required' });
+      }
+
+      const user = await authService.authenticateUser(username, password);
+      
+      if (!user) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      req.session!.userId = user.id;
+      
+      res.json({ 
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        role: user.role
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.session?.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Logout failed' });
+      }
+      res.json({ message: 'Logged out successfully' });
+    });
+  });
+
+  app.get("/api/auth/me", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session!.userId!);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      res.json({ 
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        role: user.role
+      });
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ error: "Failed to fetch user" });
+    }
+  });
+
+  // User management routes (admin only)
+  app.post("/api/users", requireAuth, async (req, res) => {
+    try {
+      // Check if current user is admin
+      const currentUser = await storage.getUser(req.session!.userId!);
+      if (!currentUser || currentUser.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
+
+      const { username, password, name, role } = req.body;
+      
+      if (!username || !password || !name || !role) {
+        return res.status(400).json({ error: 'All fields are required' });
+      }
+
+      const user = await authService.createUser({
+        username,
+        password,
+        name,
+        role
+      });
+
+      res.json({ 
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        role: user.role
+      });
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ error: "Failed to create user" });
+    }
+  });
 
   // API endpoints for AC Types and Engine Types
   app.get("/api/ac-types", async (req, res) => {
@@ -91,7 +221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/orders", async (req, res) => {
+  app.post("/api/orders", requireAuth, async (req, res) => {
     try {
       const orderData = insertOrderSchema.parse(req.body);
       const order = await storage.createOrder(orderData);
@@ -102,6 +232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: `New order created: ${order.orderNumber}`,
         entityType: "order",
         entityId: order.id,
+        userId: req.session!.userId,
       });
       
       // Broadcast real-time update
@@ -116,7 +247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/orders/:id/status", async (req, res) => {
+  app.patch("/api/orders/:id/status", requireAuth, async (req, res) => {
     try {
       const { status } = req.body;
       const order = await storage.updateOrderStatus(req.params.id, status);
@@ -127,6 +258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: `Order ${order.orderNumber} status updated to ${status}`,
         entityType: "order",
         entityId: order.id,
+        userId: req.session!.userId,
       });
       
       // Broadcast real-time update

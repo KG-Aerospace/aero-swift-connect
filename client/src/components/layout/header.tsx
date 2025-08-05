@@ -1,9 +1,20 @@
-import { Search, Bell, Menu, Plane } from "lucide-react";
+import { Search, Bell, Menu, Plane, User, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface HeaderProps {
   setSidebarOpen: (open: boolean) => void;
@@ -12,6 +23,16 @@ interface HeaderProps {
 export default function Header({ setSidebarOpen }: HeaderProps) {
   const { isConnected } = useWebSocket();
   const [location] = useLocation();
+  const { user } = useAuth();
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("/api/auth/logout", "POST");
+    },
+    onSuccess: () => {
+      window.location.reload();
+    },
+  });
 
   const getPageTitle = () => {
     switch (location) {
@@ -123,6 +144,39 @@ export default function Header({ setSidebarOpen }: HeaderProps) {
               3
             </Badge>
           </button>
+
+          {/* User Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center space-x-2"
+                data-testid="user-menu-button"
+              >
+                <User className="w-5 h-5" />
+                <span className="hidden md:inline">{user?.name || user?.username}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{user?.name}</p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user?.username} · {user?.role}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => logoutMutation.mutate()}
+                className="text-red-600 cursor-pointer"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

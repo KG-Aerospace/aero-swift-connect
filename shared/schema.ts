@@ -1,16 +1,22 @@
-import { pgTable, text, varchar, integer, timestamp, boolean, json, jsonb, uuid, serial } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { pgTable, text, varchar, integer, timestamp, boolean, json, jsonb, uuid, serial, index } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey(),
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role").notNull(),
+  name: text("name").notNull(), // Employee name stored here
+  role: text("role").notNull().default('user'),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertUserSchema = createInsertSchema(users);
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
@@ -134,10 +140,14 @@ export const activities = pgTable("activities", {
   entityType: text("entity_type"), // order, quote, email, etc.
   description: text("description").notNull(),
   metadata: json("metadata"),
+  userId: varchar("user_id").references(() => users.id), // Track who performed the action
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertActivitySchema = createInsertSchema(activities);
+export const insertActivitySchema = createInsertSchema(activities).omit({
+  id: true,
+  createdAt: true,
+});
 export type InsertActivity = z.infer<typeof insertActivitySchema>;
 export type Activity = typeof activities.$inferSelect;
 
@@ -230,7 +240,20 @@ export const insertPartSchema = createInsertSchema(parts);
 export type InsertPart = z.infer<typeof insertPartSchema>;
 export type Part = typeof parts.$inferSelect;
 
+// Sessions table for user authentication
+export const sessions = pgTable("sessions", {
+  sid: varchar("sid").primaryKey(),
+  sess: jsonb("sess").notNull(),
+  expire: timestamp("expire", { mode: 'date' }).notNull(),
+});
+
 // Relations
+export const userRelations = relations(users, ({ many }) => ({
+  activities: many(activities),
+  approvedProcurementRequests: many(procurementRequests),
+  reviewedDraftOrders: many(draftOrders),
+}));
+
 export const emailRelations = relations(emails, ({ one, many }) => ({
   customer: one(customers, {
     fields: [emails.customerId],
@@ -301,6 +324,13 @@ export const draftOrderRelations = relations(draftOrders, ({ one }) => ({
   }),
   reviewedByUser: one(users, {
     fields: [draftOrders.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
+export const activityRelations = relations(activities, ({ one }) => ({
+  user: one(users, {
+    fields: [activities.userId],
     references: [users.id],
   }),
 }));

@@ -35,8 +35,11 @@ Preferred communication style: Simple, everyday language.
 
 ### Authentication and Authorization
 - **Session Management**: PostgreSQL session store with connect-pg-simple
-- **User Roles**: Role-based access control with user management
+- **User Authentication**: Username/password based authentication with bcrypt password hashing
+- **User Roles**: Role-based access control (admin, user roles)
 - **Security**: Environment-based configuration for database credentials
+- **Activity Tracking**: All user actions are logged with userId for complete audit trail
+- **Login Credentials**: Default admin user - username: "admin", password: "admin123"
 
 ### Real-time Features
 - **WebSocket Integration**: Live updates for new orders, quotes, and email processing
