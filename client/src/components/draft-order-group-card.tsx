@@ -185,6 +185,9 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
           condition: draft.condition || "NE",
           notes: draft.notes || "",
           comment: draft.comment || "",
+          customerRequestDate: draft.customerRequestDate ? new Date(draft.customerRequestDate).toISOString().split('T')[0] : "",
+          itemId: draft.requisitionNumber || draft.positionId || "",
+          alternates: draft.alternates || "",
         }
       });
     }
@@ -192,7 +195,14 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
 
   const handleSave = (draftId: string) => {
     const data = editingDrafts[draftId];
-    updateMutation.mutate({ id: draftId, data });
+    // Format the data to match backend expectations
+    const formattedData = {
+      ...data,
+      requisitionNumber: data.itemId || data.requisitionNumber,
+      positionId: data.itemId || data.positionId,
+      customerRequestDate: data.customerRequestDate ? new Date(data.customerRequestDate) : undefined,
+    };
+    updateMutation.mutate({ id: draftId, data: formattedData });
     delete editingDrafts[draftId];
     setEditingDrafts({ ...editingDrafts });
   };
@@ -660,14 +670,15 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
                         <div>
                           <span className="text-gray-500">AC Type:</span>
                           {isEditing ? (
-                            <Input
+                            <AutocompleteInput
                               value={editData.acType || ""}
-                              onChange={(e) => setEditingDrafts({
+                              onChange={(value) => setEditingDrafts({
                                 ...editingDrafts,
-                                [draft.id]: { ...editData, acType: e.target.value }
+                                [draft.id]: { ...editData, acType: value }
                               })}
-                              className="mt-1 h-7 text-xs"
+                              suggestions={acTypes.map(t => t.name)}
                               placeholder="AC Type"
+                              className="mt-1 h-7 text-xs"
                             />
                           ) : (
                             <div className="font-medium">{draft.acType || "-"}</div>
@@ -677,14 +688,15 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
                         <div>
                           <span className="text-gray-500">Engine Type:</span>
                           {isEditing ? (
-                            <Input
+                            <AutocompleteInput
                               value={editData.engineType || ""}
-                              onChange={(e) => setEditingDrafts({
+                              onChange={(value) => setEditingDrafts({
                                 ...editingDrafts,
-                                [draft.id]: { ...editData, engineType: e.target.value }
+                                [draft.id]: { ...editData, engineType: value }
                               })}
-                              className="mt-1 h-7 text-xs"
+                              suggestions={engineTypes.map(t => t.name)}
                               placeholder="Engine"
+                              className="mt-1 h-7 text-xs"
                             />
                           ) : (
                             <div className="font-medium">{draft.engineType || "-"}</div>
