@@ -11,7 +11,7 @@ import {
   type Part, type InsertPart
 } from "@shared/schema";
 import { db, pool } from "./db";
-import { eq, desc, count, sql, and, gte, lte } from "drizzle-orm";
+import { eq, desc, count, sql, and, gte, lte, or } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -74,6 +74,8 @@ export interface IStorage {
   // Parts
   getPartByNumber(partNumber: string): Promise<Part | undefined>;
   getParts(): Promise<Part[]>;
+  searchParts(query: string): Promise<Part[]>;
+  getAllParts(): Promise<Part[]>;
   createPart(part: InsertPart): Promise<Part>;
   updatePartPrice(partNumber: string, price: string, currency?: string): Promise<Part>;
 }
@@ -515,6 +517,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getParts(): Promise<Part[]> {
+    return db.select().from(parts).orderBy(desc(parts.partNumber));
+  }
+
+  async searchParts(query: string): Promise<Part[]> {
+    if (!query || query.length < 2) {
+      return [];
+    }
+    
+    const searchTerm = `%${query.toLowerCase()}%`;
+    const normalizedSearchTerm = query.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    const normalizedPattern = `%${normalizedSearchTerm}%`;
+    
+    const result = await db.select()
+      .from(parts)
+      .where(
+        or(
+          sql`LOWER(${parts.partNumber}) LIKE ${searchTerm}`,
+          sql`LOWER(${parts.description}) LIKE ${searchTerm}`,
+          sql`${parts.normalized} LIKE ${normalizedPattern}`
+        )
+      )
+      .limit(20);
+    return result;
+  }
+
+  async getAllParts(): Promise<Part[]> {
     return db.select().from(parts).orderBy(desc(parts.partNumber));
   }
 

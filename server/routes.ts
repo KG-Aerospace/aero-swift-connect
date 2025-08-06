@@ -374,6 +374,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Parts API
+  app.get("/api/parts/search", async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      
+      if (!query || query.length < 2) {
+        return res.json([]);
+      }
+      
+      const parts = await storage.searchParts(query);
+      res.json(parts);
+    } catch (error) {
+      console.error("Error searching parts:", error);
+      res.json([]);
+    }
+  });
+
   app.get("/api/parts/:partNumber", async (req, res) => {
     try {
       const { partNumber } = req.params;
@@ -392,7 +408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/parts", async (_req, res) => {
     try {
-      const parts = await storage.getParts();
+      const parts = await storage.getAllParts();
       res.json(parts);
     } catch (error) {
       console.error("Error fetching parts:", error);
@@ -960,29 +976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Parts endpoints
-  app.get("/api/parts", async (req, res) => {
-    const { partService } = await import("./services/partService");
-    const partsData = await partService.getAllParts();
-    res.json(partsData);
-  });
 
-  app.get("/api/parts/search", async (req, res) => {
-    const { partService } = await import("./services/partService");
-    const query = req.query.q as string;
-    const partsData = await partService.searchParts(query);
-    res.json(partsData);
-  });
-
-  app.get("/api/parts/:partNumber", async (req, res) => {
-    const { partService } = await import("./services/partService");
-    const part = await partService.getPartByNumber(req.params.partNumber);
-    if (part) {
-      res.json(part);
-    } else {
-      res.status(404).json({ error: "Part not found" });
-    }
-  });
 
   // AI Analysis endpoint for draft orders
   app.post("/api/draft-orders/analyze-ai", async (req, res) => {
