@@ -171,6 +171,14 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
       delete editingDrafts[draftId];
       setEditingDrafts({ ...editingDrafts });
     } else {
+      // Handle object types for AC Type and Engine Type
+      const acTypeValue = typeof draft.acType === 'object' ? 
+        (draft.acType?.type || draft.acType?.name || "") : 
+        (draft.acType || "");
+      const engineTypeValue = typeof draft.engineType === 'object' ? 
+        (draft.engineType?.type || draft.engineType?.name || "") : 
+        (draft.engineType || "");
+        
       setEditingDrafts({
         ...editingDrafts,
         [draftId]: {
@@ -179,8 +187,8 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
           quantity: draft.quantity,
           uom: draft.uom || "EA",
           cheapExp: draft.cheapExp || "CHEAP",
-          acType: draft.acType || "",
-          engineType: draft.engineType || "",
+          acType: acTypeValue,
+          engineType: engineTypeValue,
           urgencyLevel: draft.urgencyLevel,
           condition: draft.condition || "NE",
           notes: draft.notes || "",
@@ -763,12 +771,17 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
                                 ...editingDrafts,
                                 [draft.id]: { ...editData, acType: value }
                               })}
-                              suggestions={acTypes.map(t => t.name).filter(Boolean)}
+                              suggestions={acTypes.map(t => t.type || t.name).filter(Boolean)}
                               placeholder="AC Type"
                               className="mt-1 h-7 text-xs"
                             />
                           ) : (
-                            <div className="font-medium">{draft.acType || "-"}</div>
+                            <div className="font-medium">
+                              {typeof draft.acType === 'object' ? 
+                                (draft.acType?.type || draft.acType?.name || "-") : 
+                                (draft.acType || "-")
+                              }
+                            </div>
                           )}
                         </div>
                         
@@ -781,12 +794,17 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
                                 ...editingDrafts,
                                 [draft.id]: { ...editData, engineType: value }
                               })}
-                              suggestions={engineTypes.map(t => t.name).filter(Boolean)}
+                              suggestions={engineTypes.map(t => t.type || t.name).filter(Boolean)}
                               placeholder="Engine"
                               className="mt-1 h-7 text-xs"
                             />
                           ) : (
-                            <div className="font-medium">{draft.engineType || "-"}</div>
+                            <div className="font-medium">
+                              {typeof draft.engineType === 'object' ? 
+                                (draft.engineType?.type || draft.engineType?.name || "-") : 
+                                (draft.engineType || "-")
+                              }
+                            </div>
                           )}
                         </div>
                       </div>

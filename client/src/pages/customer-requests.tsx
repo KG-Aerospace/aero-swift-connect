@@ -403,12 +403,7 @@ export default function CustomerRequests() {
                     </div>
                     <div className="w-20 text-gray-500">{draft.acType || "-"}</div>
                     <div className="w-24 text-right font-medium">
-                      {draft.unitPrice ? 
-                        <span className="text-green-600 dark:text-green-400">
-                          ~${draft.unitPrice}
-                        </span> : 
-                        <span className="text-gray-400">-</span>
-                      }
+                      {draft.estimatedPrice ? `~$${draft.estimatedPrice.toFixed(2)}` : "-"}
                     </div>
                   </div>
                 ))}
