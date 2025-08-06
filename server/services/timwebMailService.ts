@@ -94,12 +94,12 @@ export class TimwebMailService {
       console.log("📧 Attempting to connect to IMAP server...");
       this.imap.connect();
       
-      // Check for new emails every 30 seconds
+      // Check for new emails every 5 minutes
       this.checkInterval = setInterval(() => {
         if (this.isConnected) {
           this.checkForNewEmails();
         }
-      }, 30000);
+      }, 5 * 60 * 1000); // 5 minutes
     } catch (error) {
       console.error("📧 Failed to start email monitoring:", error);
     }

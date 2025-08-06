@@ -136,7 +136,7 @@ export class DatabaseStorage implements IStorage {
     return supplier;
   }
 
-  async getEmails(limit = 50): Promise<Email[]> {
+  async getEmails(limit = 200): Promise<Email[]> {
     const result = await db
       .select({
         email: emails,
@@ -144,18 +144,13 @@ export class DatabaseStorage implements IStorage {
       })
       .from(emails)
       .leftJoin(users, eq(emails.assignedToUserId, users.id))
-      .orderBy(desc(emails.createdAt))
+      .orderBy(desc(emails.receivedAt))
       .limit(limit);
     
     return result.map(row => ({
       ...row.email,
       assignedToUser: row.assignedToUser
     }));
-  }
-
-  async getEmail(id: string): Promise<Email | undefined> {
-    const [email] = await db.select().from(emails).where(eq(emails.id, id));
-    return email || undefined;
   }
 
   async getEmailById(id: string): Promise<Email | undefined> {
@@ -168,7 +163,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateEmailStatus(id: string, customerId?: string): Promise<Email> {
-    const updateData: any = { processed: true, processedAt: new Date() };
+    const updateData: any = { processed: true };
     if (customerId) updateData.customerId = customerId;
     
     const [email] = await db
@@ -236,8 +231,7 @@ export class DatabaseStorage implements IStorage {
     const [email] = await db
       .update(emails)
       .set({ 
-        processed: true,
-        processedAt: new Date()
+        processed: true
       })
       .where(eq(emails.id, emailId))
       .returning();
@@ -362,11 +356,11 @@ export class DatabaseStorage implements IStorage {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Daily emails
+    // Daily emails - count emails received today
     const [dailyEmailsResult] = await db
       .select({ count: count() })
       .from(emails)
-      .where(and(gte(emails.createdAt, today), lte(emails.createdAt, tomorrow)));
+      .where(and(gte(emails.receivedAt, today), lte(emails.receivedAt, tomorrow)));
 
     // Active orders (verified orders only)
     const [activeOrdersResult] = await db
@@ -398,13 +392,13 @@ export class DatabaseStorage implements IStorage {
       .from(orders)
       .where(eq(orders.status, 'completed'));
 
-    // Email processing rate
+    // Email processing rate - count emails received and processed today
     const [processedEmailsResult] = await db
       .select({ count: count() })
       .from(emails)
       .where(and(
-        gte(emails.createdAt, today), 
-        lte(emails.createdAt, tomorrow),
+        gte(emails.receivedAt, today), 
+        lte(emails.receivedAt, tomorrow),
         eq(emails.processed, true)
       ));
 
