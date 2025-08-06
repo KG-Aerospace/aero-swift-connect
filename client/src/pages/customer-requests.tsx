@@ -327,48 +327,23 @@ export default function CustomerRequests() {
               </div>
             </div>
 
-            {/* Items count */}
-            <div className="w-20 text-center">
-              <Badge variant="outline" className="text-xs">
-                {item.totalItems} items
-              </Badge>
-            </div>
-
-            {/* Progress */}
-            {item.totalItems > 0 && (
-              <div className="w-24">
-                <div className="flex items-center gap-1">
-                  <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div 
-                      className="bg-green-500 h-2 rounded-full transition-all"
-                      style={{ width: `${(item.completedItems / item.totalItems) * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-gray-500">
-                    {item.completedItems}/{item.totalItems}
-                  </span>
-                </div>
-              </div>
-            )}
-
             {/* Date */}
             <div className="w-32 text-xs text-gray-500 dark:text-gray-400">
               {item.email?.receivedAt && format(new Date(item.email.receivedAt), "MMM d, HH:mm")}
             </div>
 
             {/* Status */}
-            <div className="w-24">
+            <div className="w-20">
               <Badge className={cn("text-xs", getStatusColor(item.email?.processed ? "processed" : "pending"))}>
-                {item.email?.processed ? "Processed" : "Pending"}
+                {item.email?.processed ? "✓" : "○"}
               </Badge>
             </div>
 
             {/* Assigned to */}
             {item.email?.assignedToUserId && (
-              <div className="w-32">
+              <div className="w-24">
                 <Badge variant="secondary" className="text-xs">
-                  <UserCheck className="h-3 w-3 mr-1" />
-                  {item.email?.assignedToUser?.name || "Assigned"}
+                  <UserCheck className="h-3 w-3" />
                 </Badge>
               </div>
             )}
@@ -409,6 +384,42 @@ export default function CustomerRequests() {
               </TooltipProvider>
             </div>
           </div>
+
+          {/* Line items preview - always visible */}
+          {hasDetails && (
+            <div className="px-3 pb-2">
+              <div className="bg-gray-50 dark:bg-gray-900/30 rounded-lg p-2 space-y-1">
+                {item.drafts.slice(0, isExpanded ? undefined : 3).map((draft: any, idx: number) => (
+                  <div key={draft.id} className="flex items-center gap-3 text-xs">
+                    <div className="w-6 text-gray-400 text-right">{idx + 1}.</div>
+                    <div className="w-32 font-mono font-medium">{draft.partNumber || "-"}</div>
+                    <div className="flex-1 truncate text-gray-600 dark:text-gray-400">
+                      {draft.description || "No description"}
+                    </div>
+                    <div className="w-16 text-center">
+                      <Badge variant="outline" className="text-xs px-1">
+                        {draft.quantity || 0}
+                      </Badge>
+                    </div>
+                    <div className="w-20 text-gray-500">{draft.acType || "-"}</div>
+                    <div className="w-24 text-right font-medium">
+                      {draft.estimatedPrice ? 
+                        <span className="text-green-600 dark:text-green-400">
+                          ~${draft.estimatedPrice}
+                        </span> : 
+                        <span className="text-gray-400">-</span>
+                      }
+                    </div>
+                  </div>
+                ))}
+                {!isExpanded && item.drafts.length > 3 && (
+                  <div className="text-xs text-gray-500 pl-9">
+                    ... and {item.drafts.length - 3} more items
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Expanded content */}
@@ -550,12 +561,10 @@ export default function CustomerRequests() {
                     <div className="w-6"></div>
                     <div className="w-24">CR#</div>
                     <div className="flex-1">Subject / From</div>
-                    <div className="w-20 text-center">Items</div>
-                    {activeTab !== "processed" && <div className="w-24 text-center">Progress</div>}
                     <div className="w-32">Date</div>
-                    <div className="w-24">Status</div>
+                    <div className="w-20 text-center">Status</div>
                     {(activeTab === "available" || activeTab === "in-progress") && (
-                      <div className="w-32">Assigned</div>
+                      <div className="w-24 text-center">Assigned</div>
                     )}
                     <div className="w-20">Actions</div>
                   </div>
