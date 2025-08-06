@@ -648,63 +648,25 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
                         </div>
                       </div>
 
-                      {/* Details grid */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                      {/* Main Details Grid */}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
                         <div>
-                          <span className="text-gray-500">Quantity:</span>
-                          {isEditing ? (
-                            <Input
-                              type="number"
-                              value={editData.quantity}
-                              onChange={(e) => setEditingDrafts({
-                                ...editingDrafts,
-                                [draft.id]: { ...editData, quantity: parseInt(e.target.value) || 1 }
-                              })}
-                              className="mt-1 h-7 text-xs"
-                            />
-                          ) : (
-                            <div className="font-medium">{draft.quantity || 1}</div>
-                          )}
+                          <span className="text-gray-500">Customer Reference:</span>
+                          <div className="font-medium">{draft.customerReference || "-"}</div>
                         </div>
                         
                         <div>
-                          <span className="text-gray-500">AC Type:</span>
-                          {isEditing ? (
-                            <AutocompleteInput
-                              value={editData.acType || ""}
-                              onChange={(value) => setEditingDrafts({
-                                ...editingDrafts,
-                                [draft.id]: { ...editData, acType: value }
-                              })}
-                              suggestions={acTypes.map(t => t.name)}
-                              placeholder="AC Type"
-                              className="mt-1 h-7 text-xs"
-                            />
-                          ) : (
-                            <div className="font-medium">{draft.acType || "-"}</div>
-                          )}
+                          <span className="text-gray-500">CR Number:</span>
+                          <div className="font-medium">{draft.crNumber || "-"}</div>
                         </div>
                         
                         <div>
-                          <span className="text-gray-500">Engine Type:</span>
-                          {isEditing ? (
-                            <AutocompleteInput
-                              value={editData.engineType || ""}
-                              onChange={(value) => setEditingDrafts({
-                                ...editingDrafts,
-                                [draft.id]: { ...editData, engineType: value }
-                              })}
-                              suggestions={engineTypes.map(t => t.name)}
-                              placeholder="Engine"
-                              className="mt-1 h-7 text-xs"
-                            />
-                          ) : (
-                            <div className="font-medium">{draft.engineType || "-"}</div>
-                          )}
+                          <span className="text-gray-500">Requisition Number:</span>
+                          <div className="font-medium">{draft.requisitionNumber || draft.positionId || "-"}</div>
                         </div>
                         
                         <div>
-                          <span className="text-gray-500">Request Date:</span>
+                          <span className="text-gray-500">Customer Request Date:</span>
                           {isEditing ? (
                             <Input
                               type="date"
@@ -724,35 +686,130 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
                             </div>
                           )}
                         </div>
-                      </div>
-
-                      {/* Additional fields */}
-                      {isEditing && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                          <div>
-                            <Label className="text-xs">Item ID</Label>
+                        
+                        <div>
+                          <span className="text-gray-500">Input Date:</span>
+                          <div className="font-medium">
+                            {draft.createdAt ? 
+                              new Date(draft.createdAt).toLocaleDateString() : 
+                              "-"
+                            }
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <span className="text-gray-500">Quantity:</span>
+                          {isEditing ? (
                             <Input
-                              value={editData.itemId || ""}
+                              type="number"
+                              value={editData.quantity}
                               onChange={(e) => setEditingDrafts({
                                 ...editingDrafts,
-                                [draft.id]: { ...editData, itemId: e.target.value }
+                                [draft.id]: { ...editData, quantity: parseInt(e.target.value) || 1 }
                               })}
-                              className="h-7 text-xs"
-                              placeholder="Item ID"
+                              className="mt-1 h-7 text-xs"
                             />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Alternates</Label>
+                          ) : (
+                            <div className="font-medium">{draft.quantity || 1}</div>
+                          )}
+                        </div>
+                        
+                        <div>
+                          <span className="text-gray-500">UOM:</span>
+                          {isEditing ? (
+                            <Input
+                              value={editData.uom || "EA"}
+                              onChange={(e) => setEditingDrafts({
+                                ...editingDrafts,
+                                [draft.id]: { ...editData, uom: e.target.value }
+                              })}
+                              className="mt-1 h-7 text-xs"
+                              placeholder="UOM"
+                            />
+                          ) : (
+                            <div className="font-medium">{draft.uom || "EA"}</div>
+                          )}
+                        </div>
+                        
+                        <div>
+                          <span className="text-gray-500">Cheap/Exp:</span>
+                          {isEditing ? (
+                            <Select
+                              value={editData.cheapExp || "CHEAP"}
+                              onValueChange={(value) => setEditingDrafts({
+                                ...editingDrafts,
+                                [draft.id]: { ...editData, cheapExp: value }
+                              })}
+                            >
+                              <SelectTrigger className="h-7 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="CHEAP">CHEAP</SelectItem>
+                                <SelectItem value="EXPENSIVE">EXPENSIVE</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="font-medium">{draft.cheapExp || "CHEAP"}</div>
+                          )}
+                        </div>
+                        
+                        <div>
+                          <span className="text-gray-500">AC Type:</span>
+                          {isEditing ? (
+                            <AutocompleteInput
+                              value={editData.acType || ""}
+                              onChange={(value) => setEditingDrafts({
+                                ...editingDrafts,
+                                [draft.id]: { ...editData, acType: value }
+                              })}
+                              suggestions={acTypes.map(t => t.name).filter(Boolean)}
+                              placeholder="AC Type"
+                              className="mt-1 h-7 text-xs"
+                            />
+                          ) : (
+                            <div className="font-medium">{draft.acType || "-"}</div>
+                          )}
+                        </div>
+                        
+                        <div>
+                          <span className="text-gray-500">Engine Type:</span>
+                          {isEditing ? (
+                            <AutocompleteInput
+                              value={editData.engineType || ""}
+                              onChange={(value) => setEditingDrafts({
+                                ...editingDrafts,
+                                [draft.id]: { ...editData, engineType: value }
+                              })}
+                              suggestions={engineTypes.map(t => t.name).filter(Boolean)}
+                              placeholder="Engine"
+                              className="mt-1 h-7 text-xs"
+                            />
+                          ) : (
+                            <div className="font-medium">{draft.engineType || "-"}</div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Alternates field */}
+                      {(isEditing || draft.alternates) && (
+                        <div>
+                          <Label className="text-xs">Alternates</Label>
+                          {isEditing ? (
                             <Input
                               value={editData.alternates || ""}
                               onChange={(e) => setEditingDrafts({
                                 ...editingDrafts,
                                 [draft.id]: { ...editData, alternates: e.target.value }
                               })}
-                              className="h-7 text-xs"
+                              className="mt-1 h-7 text-xs"
                               placeholder="Alternate parts"
                             />
-                          </div>
+                          ) : (
+                            <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                              {draft.alternates}
+                            </div>
+                          )}
                         </div>
                       )}
 
