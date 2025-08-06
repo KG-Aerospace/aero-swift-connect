@@ -17,13 +17,20 @@ class DraftOrderService {
     emailDate?: Date;
   }): Promise<DraftOrder | null> {
     try {
-      // Generate unique Requisition Number (count all draft orders)
-      const [reqCountResult] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(draftOrders);
+      // Extract the CR number (e.g., from CR-23999 get 23999)
+      const crDigits = data.crNumber.replace('CR-', '');
       
-      const reqNumber = (reqCountResult.count || 0) + 1;
-      const requisitionNumber = `ID-${reqNumber.toString().padStart(5, '0')}`;
+      // Count existing draft orders with this CR number to generate sequential item IDs
+      const existingDrafts = await db
+        .select()
+        .from(draftOrders)
+        .where(eq(draftOrders.crNumber, data.crNumber));
+      
+      // Generate Item ID based on CR number
+      // Format: ID-XXYYYY where XX is first 2 digits of CR, YYYY is sequential
+      const crPrefix = crDigits.substring(0, 2);
+      const itemSequence = (existingDrafts.length + 1).toString().padStart(3, '0');
+      const requisitionNumber = `ID-${crPrefix}${itemSequence}`;
       
       const draftId = `draft-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
@@ -42,7 +49,7 @@ class DraftOrderService {
           notes: "",
           customerReference: data.emailFrom || "",
           crNumber: data.crNumber, // Use provided CR Number
-          requisitionNumber: requisitionNumber, // Unique per item
+          requisitionNumber: requisitionNumber, // Unique per item based on CR
           positionId: requisitionNumber,
           customerRequestDate: data.emailDate || new Date(),
           uom: "EA",
@@ -96,13 +103,20 @@ class DraftOrderService {
         crNumber = `CR-${emailNumber.toString().padStart(5, '0')}`;
       }
       
-      // Generate unique Requisition Number (count all draft orders)
-      const [reqCountResult] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(draftOrders);
+      // Extract the CR number (e.g., from CR-00001 get 00001)
+      const crDigits = crNumber.replace('CR-', '');
       
-      const reqNumber = (reqCountResult.count || 0) + 1;
-      requisitionNumber = `ID-${reqNumber.toString().padStart(5, '0')}`;
+      // Count existing draft orders with this CR number to generate sequential item IDs
+      const existingDraftsForCR = await db
+        .select()
+        .from(draftOrders)
+        .where(eq(draftOrders.crNumber, crNumber));
+      
+      // Generate Item ID based on CR number
+      // Format: ID-XXYYYY where XX is first 2 digits of CR, YYY is sequential
+      const crPrefix = crDigits.substring(0, 2);
+      const itemSequence = (existingDraftsForCR.length + 1).toString().padStart(3, '0');
+      requisitionNumber = `ID-${crPrefix}${itemSequence}`;
       
       const draftId = `draft-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
