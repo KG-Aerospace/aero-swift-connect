@@ -565,132 +565,259 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
 
         {/* Parts list - only show if not all items done */}
         {!allItemsAdded && (
-          <div className="bg-gray-50 dark:bg-gray-900/30 rounded-lg p-2">
-            <div className="space-y-1">
-              {drafts.map((draft, idx) => {
+          <div className="space-y-3">
+            {drafts.map((draft, idx) => {
               const isEditing = !!editingDrafts[draft.id];
               const editData = editingDrafts[draft.id];
 
               return (
-                <div key={draft.id} className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded">
-                  <div className="w-8 text-xs text-gray-400 text-right">{idx + 1}.</div>
-                  
-                  {isEditing ? (
-                    <>
-                      <div className="flex-1 flex items-center gap-2">
-                        <PartAutocomplete
-                          partNumber={editData.partNumber}
-                          description={editData.partDescription || ""}
-                          onPartNumberChange={(value) => setEditingDrafts({
-                            ...editingDrafts,
-                            [draft.id]: { ...editData, partNumber: value }
-                          })}
-                          onDescriptionChange={(value) => setEditingDrafts({
-                            ...editingDrafts,
-                            [draft.id]: { ...editData, partDescription: value }
-                          })}
-                          className="flex-1"
-                        />
-                        <Input
-                          type="number"
-                          value={editData.quantity}
-                          onChange={(e) => setEditingDrafts({
-                            ...editingDrafts,
-                            [draft.id]: { ...editData, quantity: parseInt(e.target.value) || 1 }
-                          })}
-                          className="w-20 text-sm"
-                          placeholder="Qty"
-                        />
-                      </div>
-                      <div className="flex gap-1">
-                        <Button size="sm" onClick={() => handleSave(draft.id)} disabled={updateMutation.isPending} className="h-7 w-7 p-0">
-                          <Save className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => toggleEdit(draft.id, draft)} className="h-7 w-7 p-0">
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-32 font-mono text-sm font-medium">{draft.partNumber || "-"}</div>
-                      <div className="flex-1 text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {draft.partDescription || draft.description || "-"}
-                      </div>
-                      <div className="w-16 text-center">
-                        <Badge variant="outline" className="text-xs px-1">
-                          {draft.quantity || 0}
-                        </Badge>
-                      </div>
-                      <div className="w-20 text-xs text-gray-500">{draft.acType || "-"}</div>
-                      <div className="w-24 text-right text-sm font-medium">
-                        {draft.price ? 
-                          <span className="text-green-600 dark:text-green-400">
-                            ~${draft.price}
-                          </span> : 
-                          <span className="text-gray-400">-</span>
-                        }
-                      </div>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => toggleEdit(draft.id, draft)} className="h-7 w-7 p-0">
-                          <Edit2 className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleApprove(draft.id)} disabled={approveMutation.isPending} className="h-7 w-7 p-0 text-green-600 hover:text-green-700">
-                          <Check className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleReject(draft.id)} disabled={rejectMutation.isPending} className="h-7 w-7 p-0 text-red-600 hover:text-red-700">
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </>
-                  )}
-                        
-                  
-                  {/* Rejection Dialog */}
-                  <Dialog open={rejectionDialogOpen[draft.id] || false} onOpenChange={(open) => {
-                    setRejectionDialogOpen({ ...rejectionDialogOpen, [draft.id]: open });
-                    if (!open) {
-                      setRejectionReasons({ ...rejectionReasons, [draft.id]: "" });
-                    }
-                  }}>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Reject Draft Order</DialogTitle>
-                        <DialogDescription>
-                          Please provide a reason for rejecting this draft order.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <Textarea
-                          placeholder="Enter rejection reason..."
-                          value={rejectionReasons[draft.id] || ""}
-                          onChange={(e) => setRejectionReasons({ ...rejectionReasons, [draft.id]: e.target.value })}
-                          className="min-h-[100px]"
-                        />
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            onClick={() => setRejectionDialogOpen({ ...rejectionDialogOpen, [draft.id]: false })}
-                          >
-                            Cancel
-                          </Button>
-                          <Button 
-                            variant="destructive" 
-                            onClick={() => confirmReject(draft.id)}
-                            disabled={!rejectionReasons[draft.id]?.trim()}
-                          >
-                            Confirm Rejection
-                          </Button>
+                <Card key={draft.id} className="shadow-sm">
+                  <CardContent className="p-3">
+                    <div className="space-y-3">
+                      {/* Header row with part number and actions */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500">#{idx + 1}</span>
+                            {isEditing ? (
+                              <PartAutocomplete
+                                partNumber={editData.partNumber}
+                                description={editData.partDescription || ""}
+                                onPartNumberChange={(value) => setEditingDrafts({
+                                  ...editingDrafts,
+                                  [draft.id]: { ...editData, partNumber: value }
+                                })}
+                                onDescriptionChange={(value) => setEditingDrafts({
+                                  ...editingDrafts,
+                                  [draft.id]: { ...editData, partDescription: value }
+                                })}
+                                className="flex-1"
+                              />
+                            ) : (
+                              <div>
+                                <span className="font-mono font-semibold text-sm">{draft.partNumber || "No part number"}</span>
+                                {draft.unitPrice && (
+                                  <Badge variant="outline" className="ml-2 text-xs">
+                                    ~${draft.unitPrice} USD
+                                  </Badge>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Description */}
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            {draft.partDescription || "No description"}
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex gap-1">
+                          {isEditing ? (
+                            <>
+                              <Button size="sm" onClick={() => handleSave(draft.id)} disabled={updateMutation.isPending} className="h-7 w-7 p-0">
+                                <Save className="h-3 w-3" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => toggleEdit(draft.id, draft)} className="h-7 w-7 p-0">
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button size="sm" variant="ghost" onClick={() => toggleEdit(draft.id, draft)} className="h-7 w-7 p-0">
+                                <Edit2 className="h-3 w-3" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => handleApprove(draft.id)} disabled={approveMutation.isPending} className="h-7 w-7 p-0 text-green-600 hover:text-green-700">
+                                <Check className="h-3 w-3" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => handleReject(draft.id)} disabled={rejectMutation.isPending} className="h-7 w-7 p-0 text-red-600 hover:text-red-700">
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
+
+                      {/* Details grid */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                        <div>
+                          <span className="text-gray-500">Quantity:</span>
+                          {isEditing ? (
+                            <Input
+                              type="number"
+                              value={editData.quantity}
+                              onChange={(e) => setEditingDrafts({
+                                ...editingDrafts,
+                                [draft.id]: { ...editData, quantity: parseInt(e.target.value) || 1 }
+                              })}
+                              className="mt-1 h-7 text-xs"
+                            />
+                          ) : (
+                            <div className="font-medium">{draft.quantity || 1}</div>
+                          )}
+                        </div>
+                        
+                        <div>
+                          <span className="text-gray-500">AC Type:</span>
+                          {isEditing ? (
+                            <Input
+                              value={editData.acType || ""}
+                              onChange={(e) => setEditingDrafts({
+                                ...editingDrafts,
+                                [draft.id]: { ...editData, acType: e.target.value }
+                              })}
+                              className="mt-1 h-7 text-xs"
+                              placeholder="AC Type"
+                            />
+                          ) : (
+                            <div className="font-medium">{draft.acType || "-"}</div>
+                          )}
+                        </div>
+                        
+                        <div>
+                          <span className="text-gray-500">Engine Type:</span>
+                          {isEditing ? (
+                            <Input
+                              value={editData.engineType || ""}
+                              onChange={(e) => setEditingDrafts({
+                                ...editingDrafts,
+                                [draft.id]: { ...editData, engineType: e.target.value }
+                              })}
+                              className="mt-1 h-7 text-xs"
+                              placeholder="Engine"
+                            />
+                          ) : (
+                            <div className="font-medium">{draft.engineType || "-"}</div>
+                          )}
+                        </div>
+                        
+                        <div>
+                          <span className="text-gray-500">Request Date:</span>
+                          {isEditing ? (
+                            <Input
+                              type="date"
+                              value={editData.customerRequestDate || ""}
+                              onChange={(e) => setEditingDrafts({
+                                ...editingDrafts,
+                                [draft.id]: { ...editData, customerRequestDate: e.target.value }
+                              })}
+                              className="mt-1 h-7 text-xs"
+                            />
+                          ) : (
+                            <div className="font-medium">
+                              {draft.customerRequestDate ? 
+                                new Date(draft.customerRequestDate).toLocaleDateString() : 
+                                "-"
+                              }
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Additional fields */}
+                      {isEditing && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-xs">Item ID</Label>
+                            <Input
+                              value={editData.itemId || ""}
+                              onChange={(e) => setEditingDrafts({
+                                ...editingDrafts,
+                                [draft.id]: { ...editData, itemId: e.target.value }
+                              })}
+                              className="h-7 text-xs"
+                              placeholder="Item ID"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Alternates</Label>
+                            <Input
+                              value={editData.alternates || ""}
+                              onChange={(e) => setEditingDrafts({
+                                ...editingDrafts,
+                                [draft.id]: { ...editData, alternates: e.target.value }
+                              })}
+                              className="h-7 text-xs"
+                              placeholder="Alternate parts"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Comment field */}
+                      {(draft.comment || isEditing) && (
+                        <div>
+                          <Label className="text-xs">Comment</Label>
+                          {isEditing ? (
+                            <Textarea
+                              value={editData.comment || ""}
+                              onChange={(e) => setEditingDrafts({
+                                ...editingDrafts,
+                                [draft.id]: { ...editData, comment: e.target.value }
+                              })}
+                              className="mt-1 min-h-[50px] text-xs"
+                              placeholder="Add comment..."
+                            />
+                          ) : (
+                            <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                              {draft.comment}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               );
             })}
-            </div>
           </div>
         )}
+
+        {/* Rejection Dialogs */}
+        {drafts.map((draft) => (
+          <Dialog 
+            key={`reject-${draft.id}`}
+            open={rejectionDialogOpen[draft.id] || false} 
+            onOpenChange={(open) => {
+              setRejectionDialogOpen({ ...rejectionDialogOpen, [draft.id]: open });
+              if (!open) {
+                setRejectionReasons({ ...rejectionReasons, [draft.id]: "" });
+              }
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Reject Draft Order</DialogTitle>
+                <DialogDescription>
+                  Please provide a reason for rejecting this draft order.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Textarea
+                  placeholder="Enter rejection reason..."
+                  value={rejectionReasons[draft.id] || ""}
+                  onChange={(e) => setRejectionReasons({ ...rejectionReasons, [draft.id]: e.target.value })}
+                  className="min-h-[100px]"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setRejectionDialogOpen({ ...rejectionDialogOpen, [draft.id]: false })}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    onClick={() => confirmReject(draft.id)}
+                    disabled={!rejectionReasons[draft.id]?.trim()}
+                  >
+                    Confirm Rejection
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        ))}
 
         {/* Add Item Dialog */}
         <Dialog open={showAddItemDialog} onOpenChange={setShowAddItemDialog}>

@@ -394,7 +394,7 @@ export default function CustomerRequests() {
                     <div className="w-6 text-gray-400 text-right">{idx + 1}.</div>
                     <div className="w-32 font-mono font-medium">{draft.partNumber || "-"}</div>
                     <div className="flex-1 truncate text-gray-600 dark:text-gray-400">
-                      {draft.description || "-"}
+                      {draft.partDescription || "-"}
                     </div>
                     <div className="w-16 text-center">
                       <Badge variant="outline" className="text-xs px-1">
@@ -403,9 +403,9 @@ export default function CustomerRequests() {
                     </div>
                     <div className="w-20 text-gray-500">{draft.acType || "-"}</div>
                     <div className="w-24 text-right font-medium">
-                      {draft.price ? 
+                      {draft.unitPrice ? 
                         <span className="text-green-600 dark:text-green-400">
-                          ~${draft.price}
+                          ~${draft.unitPrice}
                         </span> : 
                         <span className="text-gray-400">-</span>
                       }
