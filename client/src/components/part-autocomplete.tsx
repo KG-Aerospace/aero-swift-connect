@@ -9,6 +9,8 @@ interface Part {
   partNumber: string;
   description: string;
   normalized?: string;
+  price?: number;
+  currency?: string;
 }
 
 interface PartAutocompleteProps {
@@ -144,8 +146,17 @@ export function PartAutocomplete({
                 )}
                 onMouseDown={() => handlePartNumberSelect(part)}
               >
-                <div className="font-medium text-sm">{part.partNumber}</div>
-                <div className="text-xs text-gray-600">{part.description}</div>
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{part.partNumber}</div>
+                    <div className="text-xs text-gray-600">{part.description}</div>
+                  </div>
+                  {part.price && (
+                    <div className="text-xs text-blue-600 font-medium ml-2">
+                      ~${part.price} {part.currency || 'USD'}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -185,8 +196,17 @@ export function PartAutocomplete({
                 )}
                 onMouseDown={() => handleDescriptionSelect(part)}
               >
-                <div className="text-xs text-gray-600">{part.partNumber}</div>
-                <div className="font-medium text-sm">{part.description}</div>
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="text-xs text-gray-600">{part.partNumber}</div>
+                    <div className="font-medium text-sm">{part.description}</div>
+                  </div>
+                  {part.price && (
+                    <div className="text-xs text-blue-600 font-medium ml-2">
+                      ~${part.price} {part.currency || 'USD'}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>

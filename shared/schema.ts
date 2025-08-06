@@ -235,6 +235,8 @@ export const parts = pgTable("parts", {
   partNumber: text("part_number").notNull().unique(),
   description: text("description").notNull(),
   normalized: text("normalized"), // Normalized part number for searching
+  price: text("price"), // Approximate price in USD
+  currency: text("currency").default("USD"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

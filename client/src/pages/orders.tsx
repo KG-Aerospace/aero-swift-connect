@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,16 +50,61 @@ const getAirlineName = (email: string): string => {
   return 'Unknown Airline';
 };
 
+// Hook to fetch part price
+const usePartPrice = (partNumber: string | null) => {
+  return useQuery({
+    queryKey: ["/api/parts", partNumber],
+    queryFn: async () => {
+      if (!partNumber) return null;
+      try {
+        const response = await fetch(`/api/parts/${encodeURIComponent(partNumber)}`);
+        if (response.ok) {
+          return await response.json();
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!partNumber,
+  });
+};
+
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingProcurement, setEditingProcurement] = useState<string | null>(null);
   const [procurementData, setProcurementData] = useState<any>({});
+  const [partPrices, setPartPrices] = useState<Record<string, any>>({});
   const { toast } = useToast();
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ["/api/orders"],
     refetchInterval: 30000,
   });
+
+  // Fetch prices for all orders
+  useEffect(() => {
+    if (orders && orders.length > 0) {
+      const fetchPrices = async () => {
+        const prices: Record<string, any> = {};
+        for (const order of orders) {
+          if (order.partNumber) {
+            try {
+              const response = await fetch(`/api/parts/${encodeURIComponent(order.partNumber)}`);
+              if (response.ok) {
+                const part = await response.json();
+                prices[order.partNumber] = part;
+              }
+            } catch (error) {
+              console.error(`Failed to fetch price for ${order.partNumber}:`, error);
+            }
+          }
+        }
+        setPartPrices(prices);
+      };
+      fetchPrices();
+    }
+  }, [orders]);
 
   const updateOrderMutation = useMutation({
     mutationFn: async ({ id, ...updates }: any) => {
@@ -457,6 +502,13 @@ export default function Orders() {
                       <Input 
                         className="h-8 text-xs"
                         value={procurementData[order.id]?.price || ''}
+                        placeholder={(() => {
+                          const partInfo = partPrices[order.partNumber];
+                          if (partInfo?.price) {
+                            return `~$${partInfo.price} ${partInfo.currency || 'USD'}`;
+                          }
+                          return 'Enter price';
+                        })()}
                         onChange={(e) => setProcurementData({
                           ...procurementData,
                           [order.id]: {
@@ -512,7 +564,15 @@ export default function Orders() {
                           <TableCell>{order.rfqStatus || "-"}</TableCell>
                           <TableCell>{order.supplierQuoteReceived || "-"}</TableCell>
                           <TableCell>{order.supplierQuoteNotes || "-"}</TableCell>
-                          <TableCell>{order.price || "-"}</TableCell>
+                          <TableCell>
+                            {(() => {
+                              const partInfo = partPrices[order.partNumber];
+                              if (partInfo?.price) {
+                                return `~$${partInfo.price} ${partInfo.currency || 'USD'}`;
+                              }
+                              return order.price || "-";
+                            })()}
+                          </TableCell>
                           <TableCell>{order.poNumber || "-"}</TableCell>
                         </TableRow>
                       </TableBody>

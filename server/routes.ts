@@ -373,6 +373,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Parts API
+  app.get("/api/parts/:partNumber", async (req, res) => {
+    try {
+      const { partNumber } = req.params;
+      const part = await storage.getPartByNumber(partNumber);
+      
+      if (!part) {
+        return res.status(404).json({ message: "Part not found" });
+      }
+      
+      res.json(part);
+    } catch (error) {
+      console.error("Error fetching part:", error);
+      res.status(500).json({ message: "Failed to fetch part" });
+    }
+  });
+
+  app.get("/api/parts", async (_req, res) => {
+    try {
+      const parts = await storage.getParts();
+      res.json(parts);
+    } catch (error) {
+      console.error("Error fetching parts:", error);
+      res.status(500).json({ message: "Failed to fetch parts" });
+    }
+  });
+
   app.patch("/api/suppliers/:id", async (req, res) => {
     try {
       const supplierData = insertSupplierSchema.partial().parse(req.body);

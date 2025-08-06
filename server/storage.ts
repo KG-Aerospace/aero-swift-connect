@@ -1,5 +1,5 @@
 import { 
-  users, customers, suppliers, emails, orders, quotes, activities, draftOrders,
+  users, customers, suppliers, emails, orders, quotes, activities, draftOrders, parts,
   type User, type InsertUser,
   type Customer, type InsertCustomer,
   type Supplier, type InsertSupplier,
@@ -7,7 +7,8 @@ import {
   type Order, type InsertOrder,
   type Quote, type InsertQuote,
   type Activity, type InsertActivity,
-  type DraftOrder, type InsertDraftOrder
+  type DraftOrder, type InsertDraftOrder,
+  type Part, type InsertPart
 } from "@shared/schema";
 import { db, pool } from "./db";
 import { eq, desc, count, sql, and, gte, lte } from "drizzle-orm";
@@ -69,6 +70,12 @@ export interface IStorage {
     totalRevenue: string;
     emailProcessingRate: number;
   }>;
+
+  // Parts
+  getPartByNumber(partNumber: string): Promise<Part | undefined>;
+  getParts(): Promise<Part[]>;
+  createPart(part: InsertPart): Promise<Part>;
+  updatePartPrice(partNumber: string, price: string, currency?: string): Promise<Part>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -497,6 +504,36 @@ export class DatabaseStorage implements IStorage {
       console.error("Error fetching orders by email:", error);
       return [];
     }
+  }
+
+  // Parts methods
+  async getPartByNumber(partNumber: string): Promise<Part | undefined> {
+    const normalizedPN = partNumber.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    const [part] = await db.select().from(parts)
+      .where(eq(parts.normalized, normalizedPN));
+    return part || undefined;
+  }
+
+  async getParts(): Promise<Part[]> {
+    return db.select().from(parts).orderBy(desc(parts.partNumber));
+  }
+
+  async createPart(insertPart: InsertPart): Promise<Part> {
+    const [part] = await db.insert(parts).values({
+      id: insertPart.id || `part-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      ...insertPart,
+      normalized: insertPart.partNumber.replace(/[^A-Z0-9]/gi, '').toUpperCase()
+    }).returning();
+    return part;
+  }
+
+  async updatePartPrice(partNumber: string, price: string, currency?: string): Promise<Part> {
+    const normalizedPN = partNumber.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    const [part] = await db.update(parts)
+      .set({ price, currency: currency || 'USD' })
+      .where(eq(parts.normalized, normalizedPN))
+      .returning();
+    return part;
   }
 }
 

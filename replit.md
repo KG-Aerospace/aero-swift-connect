@@ -54,6 +54,7 @@ Preferred communication style: Simple, everyday language.
 - **CR/Requisition Numbers**: Automatic generation of unique CR (Customer Reference) and Item ID numbers. CR numbers are generated per email (e.g., CR-00001). Item IDs are based on CR numbers with format ID-XXYY where XX is first 2 digits of CR and YY is sequential (e.g., CR-23999 generates ID-23001, ID-23002).
 - **In Progress Tab Enhancement**: The "In Progress" tab now displays full draft order cards grouped by email instead of simple email listings. Includes procurement status indicators showing green "All items done (X sent)" badge when all draft items are converted to orders, and blue badge showing "X of Y requested" to track procurement status. Individual draft items are hidden when all items are converted to orders while keeping the email card visible.
 - **Email Assignment**: Emails can be assigned to users for dedicated work. Authentication is required for assignment functionality. Assigned emails are tracked via assignedToUserId field.
+- **Parts Pricing Integration**: Real-time pricing data integrated from uploaded price lists. Database stores hundreds of aviation parts with pricing from $0.18 to $170,000+ USD. Pricing information automatically displays in Orders page and Draft Orders part selection. Approximate prices show as "~$X.XX USD" throughout the interface.
 
 ### Procurement Workflow
 - **Internal Approval System**: All supplier quotes require internal approval.
