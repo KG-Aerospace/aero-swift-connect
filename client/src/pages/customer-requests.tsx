@@ -117,6 +117,24 @@ export default function CustomerRequests() {
     );
   }
 
+  // Available tab should show all draft orders being worked on by any user
+  const allWorkingDrafts = Array.isArray(drafts) ? drafts.filter((draft: any) => 
+    draft.email?.assignedToUserId && draft.status === "pending"
+  ) : [];
+  
+  // Group working drafts by email
+  const workingDraftsByEmail = allWorkingDrafts.reduce((groups: any, draft: any) => {
+    const emailId = draft.emailId;
+    if (!groups[emailId]) {
+      groups[emailId] = {
+        email: draft.email,
+        drafts: []
+      };
+    }
+    groups[emailId].drafts.push(draft);
+    return groups;
+  }, {});
+
   const availableEmails = Array.isArray(emails) ? emails.filter((email: any) => 
     !email.processed && !email.assignedToUserId
   ) : [];
@@ -218,7 +236,7 @@ export default function CustomerRequests() {
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="available" data-testid="tab-available">
             <Mail className="h-4 w-4 mr-2" />
-            Available ({availableEmails.length})
+            Available ({Object.keys(workingDraftsByEmail).length})
           </TabsTrigger>
           <TabsTrigger value="in-progress" data-testid="tab-in-progress">
             <UserCheck className="h-4 w-4 mr-2" />
@@ -236,49 +254,50 @@ export default function CustomerRequests() {
 
         <TabsContent value="available" className="space-y-4">
           <div className="text-lg font-semibold mb-4">
-            Available Customer Requests
+            All Draft Orders Being Worked On
           </div>
           
-          {/* Assigned emails section - shows all emails being worked on */}
-          {Array.isArray(emails) && emails.filter((email: any) => email.assignedToUserId).length > 0 && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="text-sm font-medium">Currently Being Worked On</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {emails
-                    .filter((email: any) => email.assignedToUserId)
-                    .map((email: any) => (
-                      <div key={email.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <div className="text-sm font-medium truncate">{email.subject}</div>
-                            <div className="text-xs text-gray-500">{email.fromEmail}</div>
-                          </div>
-                        </div>
-                        <Badge variant="secondary" className="flex items-center gap-1 ml-2 whitespace-nowrap">
-                          <UserCheck className="h-3 w-3" />
-                          {email.assignedToUser?.name || "Assigned"}
-                        </Badge>
-                      </div>
-                    ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          
-          {availableEmails.length === 0 ? (
+          {/* Show all draft orders being worked on by any user */}
+          {Object.keys(workingDraftsByEmail).length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center text-gray-500">
-                No available emails to process
+                No draft orders are currently being worked on
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4">
-              {availableEmails.map((email) => renderEmailCard(email, true))}
+            <div className="space-y-4">
+              {Object.entries(workingDraftsByEmail).map(([emailId, group]: [string, any]) => (
+                <div key={emailId} className="relative">
+                  {/* Show who is working on this */}
+                  <div className="absolute top-4 right-4 z-10">
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      <UserCheck className="h-3 w-3" />
+                      Working: {group.email?.assignedToUser?.name || "Unknown User"}
+                    </Badge>
+                  </div>
+                  
+                  {/* Show the draft order group card */}
+                  <DraftOrderGroupCard
+                    email={group.email}
+                    drafts={group.drafts}
+                    showTakeToWork={false}
+                    isInProgress={false}
+                  />
+                </div>
+              ))}
             </div>
+          )}
+          
+          {/* Show available emails that can be taken */}
+          {availableEmails.length > 0 && (
+            <>
+              <div className="text-lg font-semibold mt-8 mb-4">
+                Available to Work On
+              </div>
+              <div className="grid gap-4">
+                {availableEmails.map((email) => renderEmailCard(email, true))}
+              </div>
+            </>
           )}
         </TabsContent>
 
