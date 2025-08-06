@@ -246,7 +246,7 @@ export default function CustomerRequests() {
           item.email?.subject?.toLowerCase().includes(searchLower) ||
           item.email?.fromEmail?.toLowerCase().includes(searchLower) ||
           item.email?.content?.toLowerCase().includes(searchLower) ||
-          item.email?.crNumber?.toLowerCase().includes(searchLower) ||
+          item.drafts?.some(d => d.crNumber?.toLowerCase().includes(searchLower)) ||
           item.drafts?.some((draft: any) => 
             draft.partNumber?.toLowerCase().includes(searchLower) ||
             draft.description?.toLowerCase().includes(searchLower) ||
@@ -274,7 +274,7 @@ export default function CustomerRequests() {
                       new Date(b.email?.receivedAt || 0).getTime();
           break;
         case "cr":
-          comparison = (a.email?.crNumber || "").localeCompare(b.email?.crNumber || "");
+          comparison = (a.drafts?.[0]?.crNumber || "").localeCompare(b.drafts?.[0]?.crNumber || "");
           break;
         case "status":
           comparison = (a.email?.processed ? 1 : 0) - (b.email?.processed ? 1 : 0);
@@ -313,7 +313,7 @@ export default function CustomerRequests() {
             {/* CR Number */}
             <div className="w-24 flex-shrink-0">
               <span className="text-xs font-mono font-semibold">
-                {item.email?.crNumber || "-"}
+                {item.drafts?.[0]?.crNumber || "-"}
               </span>
             </div>
 
@@ -394,7 +394,7 @@ export default function CustomerRequests() {
                     <div className="w-6 text-gray-400 text-right">{idx + 1}.</div>
                     <div className="w-32 font-mono font-medium">{draft.partNumber || "-"}</div>
                     <div className="flex-1 truncate text-gray-600 dark:text-gray-400">
-                      {draft.description || "No description"}
+                      {draft.description || "-"}
                     </div>
                     <div className="w-16 text-center">
                       <Badge variant="outline" className="text-xs px-1">
@@ -403,9 +403,9 @@ export default function CustomerRequests() {
                     </div>
                     <div className="w-20 text-gray-500">{draft.acType || "-"}</div>
                     <div className="w-24 text-right font-medium">
-                      {draft.estimatedPrice ? 
+                      {draft.price ? 
                         <span className="text-green-600 dark:text-green-400">
-                          ~${draft.estimatedPrice}
+                          ~${draft.price}
                         </span> : 
                         <span className="text-gray-400">-</span>
                       }
