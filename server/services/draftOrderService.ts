@@ -1,9 +1,12 @@
 import { db } from "../db";
-import { draftOrders, orders, customers, emails } from "@shared/schema";
+import { draftOrders, orders, customers, emails, parts } from "@shared/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import type { DraftOrder, InsertDraftOrder, Order } from "@shared/schema";
+import { PartService } from "./partService";
 
 class DraftOrderService {
+  private partService = new PartService();
+
   async createDraftOrderWithCR(data: {
     emailId: string;
     customerId: string;
@@ -32,6 +35,9 @@ class DraftOrderService {
       const itemSequence = (existingDrafts.length + 1).toString().padStart(3, '0');
       const requisitionNumber = `ID-${crPrefix}${itemSequence}`;
       
+      // Look up part pricing information
+      const partInfo = await this.partService.getPartByNumber(data.partNumber);
+      
       const draftId = `draft-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
       const [draft] = await db
@@ -57,6 +63,7 @@ class DraftOrderService {
           acType: "",
           engineType: "",
           comment: "",
+          unitPrice: partInfo?.price || null, // Add price from parts database
         })
         .returning();
       
@@ -118,6 +125,9 @@ class DraftOrderService {
       const itemSequence = (existingDraftsForCR.length + 1).toString().padStart(3, '0');
       requisitionNumber = `ID-${crPrefix}${itemSequence}`;
       
+      // Look up part pricing information
+      const partInfo = await this.partService.getPartByNumber(data.partNumber);
+      
       const draftId = `draft-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
       const [draft] = await db
@@ -143,6 +153,7 @@ class DraftOrderService {
           acType: "",
           engineType: "",
           comment: "",
+          unitPrice: partInfo?.price || null, // Add price from parts database
         })
         .returning();
       
@@ -194,10 +205,17 @@ class DraftOrderService {
 
   async updateDraft(id: string, updates: Partial<InsertDraftOrder>): Promise<DraftOrder | null> {
     try {
+      // If part number is being updated, fetch the new price
+      let finalUpdates = { ...updates };
+      if (updates.partNumber) {
+        const partInfo = await this.partService.getPartByNumber(updates.partNumber);
+        finalUpdates.unitPrice = partInfo?.price || null;
+      }
+
       const [updated] = await db
         .update(draftOrders)
         .set({
-          ...updates,
+          ...finalUpdates,
           updatedAt: new Date(),
         })
         .where(eq(draftOrders.id, id))

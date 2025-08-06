@@ -204,12 +204,21 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
   const handleSave = (draftId: string) => {
     const data = editingDrafts[draftId];
     // Format the data to match backend expectations
-    const formattedData = {
+    const formattedData: any = {
       ...data,
       requisitionNumber: data.itemId || data.requisitionNumber,
       positionId: data.itemId || data.positionId,
       customerRequestDate: data.customerRequestDate ? new Date(data.customerRequestDate) : undefined,
     };
+    
+    // Ensure AC Type and Engine Type are strings not objects
+    if (typeof formattedData.acType === 'object') {
+      formattedData.acType = formattedData.acType?.type || formattedData.acType?.name || "";
+    }
+    if (typeof formattedData.engineType === 'object') {
+      formattedData.engineType = formattedData.engineType?.type || formattedData.engineType?.name || "";
+    }
+    
     updateMutation.mutate({ id: draftId, data: formattedData });
     delete editingDrafts[draftId];
     setEditingDrafts({ ...editingDrafts });
@@ -771,7 +780,7 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
                                 ...editingDrafts,
                                 [draft.id]: { ...editData, acType: value }
                               })}
-                              suggestions={acTypes.map(t => t.type || t.name).filter(Boolean)}
+                              suggestions={acTypes.map(t => t.type).filter(Boolean)}
                               placeholder="AC Type"
                               className="mt-1 h-7 text-xs"
                             />
@@ -794,7 +803,7 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
                                 ...editingDrafts,
                                 [draft.id]: { ...editData, engineType: value }
                               })}
-                              suggestions={engineTypes.map(t => t.type || t.name).filter(Boolean)}
+                              suggestions={engineTypes.map(t => t.type).filter(Boolean)}
                               placeholder="Engine"
                               className="mt-1 h-7 text-xs"
                             />

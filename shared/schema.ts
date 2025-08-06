@@ -185,6 +185,8 @@ export const draftOrders = pgTable("draft_orders", {
   partDescription: text("part_description"),
   quantity: integer("quantity").notNull().default(1),
   uom: text("uom").default("EA"), // EA, SET, KIT, etc.
+  alternates: text("alternates"), // Alternative part numbers
+  unitPrice: text("unit_price"), // Price per unit from parts database
   cheapExp: text("cheap_exp").default("CHEAP"), // CHEAP, EXP
   acType: text("ac_type").default(""), // B737, A320, etc.
   engineType: text("engine_type").default(""), // CFM56, V2500, etc.

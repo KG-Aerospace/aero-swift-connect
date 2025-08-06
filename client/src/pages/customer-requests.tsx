@@ -401,9 +401,17 @@ export default function CustomerRequests() {
                         {draft.quantity || 0}
                       </Badge>
                     </div>
-                    <div className="w-20 text-gray-500">{draft.acType || "-"}</div>
+                    <div className="w-20 text-gray-500">
+                      {typeof draft.acType === 'object' ? 
+                        (draft.acType?.type || draft.acType?.name || "-") : 
+                        (draft.acType || "-")
+                      }
+                    </div>
                     <div className="w-24 text-right font-medium">
-                      {draft.estimatedPrice ? `~$${draft.estimatedPrice.toFixed(2)}` : "-"}
+                      {draft.unitPrice ? 
+                        <span className="text-green-600 dark:text-green-400">~${draft.unitPrice} USD</span> : 
+                        (draft.estimatedPrice ? `~$${draft.estimatedPrice.toFixed(2)}` : "-")
+                      }
                     </div>
                   </div>
                 ))}
