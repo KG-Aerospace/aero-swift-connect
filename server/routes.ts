@@ -14,6 +14,7 @@ import { draftOrderService } from "./services/draftOrderService";
 import { authService } from "./services/authService";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import { eq } from "drizzle-orm";
 
 // Extend Express Request type to include user
 declare module 'express-serve-static-core' {
@@ -1032,6 +1033,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         error: error instanceof Error ? error.message : "AI analysis failed" 
       });
+    }
+  });
+
+  // Reprocess pending emails to create draft orders
+  app.post("/api/emails/reprocess-pending", async (req, res) => {
+    try {
+      // Get pending emails from storage
+      const pendingEmails = await storage.getPendingEmails(10);
+      
+      console.log(`📧 Found ${pendingEmails.length} pending emails to reprocess`);
+      
+      let processedCount = 0;
+      let draftsCreated = 0;
+      
+      for (const email of pendingEmails) {
+        console.log(`📧 Reprocessing email: ${email.subject} from ${email.fromEmail}`);
+        
+        // Process email for aviation parts using timwebMailService
+        const result = await timwebMailService.processAviationPartsRequest(email, email.content || email.htmlContent || "");
+        processedCount++;
+        
+        // Check if drafts were created
+        const emailDrafts = await db
+          .select()
+          .from(draftOrders)
+          .where(eq(draftOrders.emailId, email.id));
+        
+        if (emailDrafts.length > 0) {
+          draftsCreated += emailDrafts.length;
+          console.log(`📋 Created ${emailDrafts.length} drafts for email ${email.id}`);
+        }
+      }
+      
+      console.log(`📧 Reprocessed ${processedCount} emails, created ${draftsCreated} drafts`);
+      
+      res.json({ 
+        message: `Reprocessed ${processedCount} pending emails, created ${draftsCreated} draft orders`,
+        processedCount,
+        draftsCreated 
+      });
+    } catch (error: any) {
+      console.error("Error reprocessing emails:", error);
+      console.error("Error stack:", error.stack);
+      res.status(500).json({ error: "Failed to reprocess emails", details: error.message });
     }
   });
 

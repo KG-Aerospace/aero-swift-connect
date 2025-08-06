@@ -159,8 +159,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getEmailById(id: string): Promise<Email | undefined> {
-    const [email] = await db.select().from(emails).where(eq(emails.id, id));
-    return email || undefined;
+    return this.getEmail(id);
   }
 
   async createEmail(insertEmail: InsertEmail): Promise<Email> {
@@ -168,8 +167,8 @@ export class DatabaseStorage implements IStorage {
     return email;
   }
 
-  async updateEmailStatus(id: string, status: string, customerId?: string): Promise<Email> {
-    const updateData: any = { status, processedAt: new Date() };
+  async updateEmailStatus(id: string, customerId?: string): Promise<Email> {
+    const updateData: any = { processed: true, processedAt: new Date() };
     if (customerId) updateData.customerId = customerId;
     
     const [email] = await db
@@ -192,6 +191,16 @@ export class DatabaseStorage implements IStorage {
     }
     
     return query;
+  }
+
+  async getPendingEmails(limit: number = 10): Promise<Email[]> {
+    const pendingEmails = await db
+      .select()
+      .from(emails)
+      .where(eq(emails.processed, false))
+      .limit(limit)
+      .orderBy(emails.receivedAt);
+    return pendingEmails;
   }
 
   async assignEmailToUser(emailId: string, userId: string): Promise<Email> {

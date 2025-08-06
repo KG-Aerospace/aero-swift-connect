@@ -10,12 +10,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { DraftOrderCard } from "@/components/draft-order-card";
 import { DraftOrderGroupCard } from "@/components/draft-order-group-card";
+import { ProcessedEmailsList } from "@/components/processed-emails-list";
 import { useState } from "react";
 
 export default function CustomerRequests() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("available");
+  const [isReprocessing, setIsReprocessing] = useState(false);
 
   const { data: drafts, isLoading: isDraftsLoading } = useQuery({
     queryKey: ["/api/draft-orders"],
@@ -58,6 +60,29 @@ export default function CustomerRequests() {
       });
     },
   });
+
+  const reprocessEmails = async () => {
+    setIsReprocessing(true);
+    try {
+      const response = await apiRequest("/api/emails/reprocess-pending", {
+        method: "POST",
+      });
+      toast({
+        title: "Reprocessing completed",
+        description: response.message || "Emails have been reprocessed",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/emails"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/draft-orders"] });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to reprocess emails",
+        variant: "destructive",
+      });
+    } finally {
+      setIsReprocessing(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -179,6 +204,16 @@ export default function CustomerRequests() {
 
   return (
     <div className="space-y-6" data-testid="customer-requests-main">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Customer Requests</h1>
+        <Button
+          onClick={reprocessEmails}
+          disabled={isReprocessing}
+          variant="outline"
+        >
+          {isReprocessing ? "Reprocessing..." : "Reprocess Pending Emails"}
+        </Button>
+      </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="available" data-testid="tab-available">
@@ -315,20 +350,7 @@ export default function CustomerRequests() {
         </TabsContent>
 
         <TabsContent value="processed" className="space-y-4">
-          <div className="text-lg font-semibold mb-4">
-            Processed Emails
-          </div>
-          {processedEmails.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center text-gray-500">
-                No processed emails
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {processedEmails.slice(0, 20).map((email) => renderEmailCard(email, false))}
-            </div>
-          )}
+          <ProcessedEmailsList emails={processedEmails} />
         </TabsContent>
       </Tabs>
     </div>

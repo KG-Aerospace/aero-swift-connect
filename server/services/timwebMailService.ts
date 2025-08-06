@@ -234,8 +234,8 @@ export class TimwebMailService {
           fromEmail: fromEmail,
           toEmail: parsed.to?.text || '',
           subject,
-          content: body ? body.substring(0, 5000) : '', // Use 'content' field
-          htmlContent: bodyHtml ? bodyHtml.substring(0, 50000) : '', // Use 'htmlContent' field
+          body: body ? body.substring(0, 5000) : '', // Make sure body is never null
+          htmlBody: bodyHtml ? bodyHtml.substring(0, 50000) : '', // Use htmlBody field
           attachments: attachmentData.length > 0 ? attachmentData : [],
           processed: false,
           customerId: customer.id,
@@ -352,7 +352,6 @@ export class TimwebMailService {
       await db
         .update(emails)
         .set({ 
-          status: "processing",
           processed: true,
           processedAt: new Date()
         })
