@@ -228,6 +228,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async markEmailAsProcessed(emailId: string): Promise<Email> {
+    // First delete all draft orders associated with this email
+    await db
+      .delete(draftOrders)
+      .where(eq(draftOrders.emailId, emailId));
+    
+    // Then mark the email as processed
     const [email] = await db
       .update(emails)
       .set({ 

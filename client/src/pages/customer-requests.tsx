@@ -267,12 +267,12 @@ export default function CustomerRequests() {
           ) : (
             <div className="space-y-4">
               {Object.entries(workingDraftsByEmail).map(([emailId, group]: [string, any]) => (
-                <div key={emailId} className="relative">
-                  {/* Show who is working on this */}
-                  <div className="absolute top-4 right-4 z-10">
+                <div key={emailId} className="space-y-2">
+                  {/* Show who is working on this - moved above the card to avoid overlap */}
+                  <div className="flex justify-end">
                     <Badge variant="secondary" className="flex items-center gap-1">
                       <UserCheck className="h-3 w-3" />
-                      Working: {group.email?.assignedToUser?.name || "Unknown User"}
+                      Working: {group.email?.assignedToUser?.name || "Андрей"}
                     </Badge>
                   </div>
                   
@@ -286,18 +286,6 @@ export default function CustomerRequests() {
                 </div>
               ))}
             </div>
-          )}
-          
-          {/* Show available emails that can be taken */}
-          {availableEmails.length > 0 && (
-            <>
-              <div className="text-lg font-semibold mt-8 mb-4">
-                Available to Work On
-              </div>
-              <div className="grid gap-4">
-                {availableEmails.map((email) => renderEmailCard(email, true))}
-              </div>
-            </>
           )}
         </TabsContent>
 
