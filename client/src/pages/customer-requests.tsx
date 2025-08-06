@@ -4,19 +4,49 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mail, User, Calendar, Clock, Package, UserCheck, CheckCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  Mail, User, Calendar, Clock, Package, UserCheck, CheckCircle, 
+  Search, Filter, ChevronDown, ChevronUp, FileText, ArrowUpDown,
+  Eye, Edit, Trash2, Plus, RefreshCw, UserPlus, Send, X, Check,
+  ChevronRight, ArrowUp, ArrowDown, Users, Inbox, FileCheck
+} from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useState, useMemo } from "react";
+import { cn } from "@/lib/utils";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { DraftOrderCard } from "@/components/draft-order-card";
 import { DraftOrderGroupCard } from "@/components/draft-order-group-card";
-import { ProcessedEmailsList } from "@/components/processed-emails-list";
-import { useState } from "react";
+
+interface EmailWithDrafts {
+  email: any;
+  drafts: any[];
+  totalItems: number;
+  completedItems: number;
+}
 
 export default function CustomerRequests() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("available");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"date" | "cr" | "status">("date");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "processed">("all");
   const [isReprocessing, setIsReprocessing] = useState(false);
 
   const { data: drafts, isLoading: isDraftsLoading } = useQuery({
@@ -49,7 +79,6 @@ export default function CustomerRequests() {
         title: "Email assigned",
         description: "The email has been assigned to you",
       });
-      // Switch to In Progress tab
       setActiveTab("in-progress");
     },
     onError: () => {
@@ -84,45 +113,44 @@ export default function CustomerRequests() {
     }
   };
 
+  const toggleRow = (id: string) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400";
       case "processed":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400";
       case "failed":
-        return "bg-red-100 text-red-800";
+        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
     }
   };
 
   if (isDraftsLoading || isEmailsLoading || isAssignedLoading) {
     return (
-      <div className="space-y-4" data-testid="customer-requests-loading">
-        <div className="animate-pulse">
-          {[...Array(5)].map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-                  <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
-  // Available tab should show all draft orders being worked on by any user
+  // Process data
   const allWorkingDrafts = Array.isArray(drafts) ? drafts.filter((draft: any) => 
     draft.email?.assignedToUserId && draft.status === "pending"
   ) : [];
-  
-  // Group working drafts by email
+
   const workingDraftsByEmail = allWorkingDrafts.reduce((groups: any, draft: any) => {
     const emailId = draft.emailId;
     if (!groups[emailId]) {
@@ -139,12 +167,7 @@ export default function CustomerRequests() {
     !email.processed && !email.assignedToUserId
   ) : [];
 
-  // All assigned emails that aren't fully completed should be shown in "In Progress"
-  // We don't filter by processed status because emails can have draft orders created 
-  // but still need to be worked on by the assigned user
   const myInProgressEmails = Array.isArray(myAssignedEmails) ? myAssignedEmails : [];
-  
-  // Get draft orders for assigned emails
   const assignedEmailIds = myInProgressEmails.map((email: any) => email.id);
   const assignedDrafts = Array.isArray(drafts) ? drafts.filter((draft: any) => 
     assignedEmailIds.includes(draft.emailId) && draft.status === "pending"
@@ -154,210 +177,395 @@ export default function CustomerRequests() {
     email.processed
   ) : [];
 
-  // Only show drafts in "Draft Orders" tab if they are not assigned to any user
   const pendingDrafts = Array.isArray(drafts) ? drafts.filter((draft: any) => 
     draft.status === "pending" && !draft.email?.assignedToUserId
   ) : [];
 
-  const renderEmailCard = (email: any, showAssignButton: boolean = false) => (
-    <Card key={email.id} className="hover:shadow-lg transition-shadow overflow-hidden" data-testid={`email-card-${email.id}`}>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-2">
-          <div className="space-y-1 flex-1 min-w-0">
-            <CardTitle className="text-lg truncate">{email.subject}</CardTitle>
-            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-              <div className="flex items-center gap-1 min-w-0">
-                <User className="h-3 w-3 flex-shrink-0" />
-                <span className="truncate">{email.fromEmail}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                <span className="whitespace-nowrap">{formatDistanceToNow(new Date(email.receivedAt), { addSuffix: true })}</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-start gap-2 justify-end">
-            <Badge className={`${getStatusColor(email.processed ? "processed" : "pending")} whitespace-nowrap`}>
-              {email.processed ? "Processed" : "Pending"}
-            </Badge>
-            {email.assignedToUserId && (
-              <Badge variant="secondary" className="flex items-center gap-1 whitespace-nowrap">
-                <UserCheck className="h-3 w-3" />
-                {email.assignedToUser?.name || "Assigned"}
-              </Badge>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {email.content && (
-            <div className="text-sm text-gray-600 line-clamp-3">
-              {email.content}
-            </div>
-          )}
-          
-          {email.assignedAt && (
-            <div className="text-xs text-gray-500 flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              Assigned {format(new Date(email.assignedAt), "MMM d, yyyy 'at' h:mm a")}
-            </div>
-          )}
+  // Group and filter data for current tab
+  const getTabData = () => {
+    let data: EmailWithDrafts[] = [];
+    
+    switch (activeTab) {
+      case "available":
+        data = Object.entries(workingDraftsByEmail).map(([emailId, group]: [string, any]) => ({
+          email: group.email,
+          drafts: group.drafts,
+          totalItems: group.drafts.length,
+          completedItems: group.drafts.filter((d: any) => d.orders?.length > 0).length
+        }));
+        break;
+      
+      case "in-progress":
+        data = myInProgressEmails.map((email: any) => {
+          const emailDrafts = assignedDrafts.filter((draft: any) => draft.emailId === email.id);
+          return {
+            email,
+            drafts: emailDrafts,
+            totalItems: emailDrafts.length,
+            completedItems: emailDrafts.filter((d: any) => d.orders?.length > 0).length
+          };
+        });
+        break;
+      
+      case "drafts":
+        const draftGroups = pendingDrafts.reduce((groups: any, draft: any) => {
+          const emailId = draft.emailId;
+          if (!groups[emailId]) {
+            groups[emailId] = {
+              email: draft.email,
+              drafts: []
+            };
+          }
+          groups[emailId].drafts.push(draft);
+          return groups;
+        }, {});
+        
+        data = Object.entries(draftGroups).map(([emailId, group]: [string, any]) => ({
+          email: group.email,
+          drafts: group.drafts,
+          totalItems: group.drafts.length,
+          completedItems: group.drafts.filter((d: any) => d.orders?.length > 0).length
+        }));
+        break;
+      
+      case "processed":
+        data = processedEmails.map((email: any) => ({
+          email,
+          drafts: [],
+          totalItems: 0,
+          completedItems: 0
+        }));
+        break;
+    }
 
-          {showAssignButton && !email.assignedToUserId && (
+    // Apply search filter
+    if (searchQuery) {
+      data = data.filter(item => {
+        const searchLower = searchQuery.toLowerCase();
+        return (
+          item.email?.subject?.toLowerCase().includes(searchLower) ||
+          item.email?.fromEmail?.toLowerCase().includes(searchLower) ||
+          item.email?.content?.toLowerCase().includes(searchLower) ||
+          item.email?.crNumber?.toLowerCase().includes(searchLower) ||
+          item.drafts?.some((draft: any) => 
+            draft.partNumber?.toLowerCase().includes(searchLower) ||
+            draft.description?.toLowerCase().includes(searchLower) ||
+            draft.quantity?.toString().includes(searchLower)
+          )
+        );
+      });
+    }
+
+    // Apply status filter
+    if (filterStatus !== "all") {
+      data = data.filter(item => {
+        const isProcessed = item.email?.processed;
+        return filterStatus === "processed" ? isProcessed : !isProcessed;
+      });
+    }
+
+    // Apply sorting
+    data.sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortBy) {
+        case "date":
+          comparison = new Date(a.email?.receivedAt || 0).getTime() - 
+                      new Date(b.email?.receivedAt || 0).getTime();
+          break;
+        case "cr":
+          comparison = (a.email?.crNumber || "").localeCompare(b.email?.crNumber || "");
+          break;
+        case "status":
+          comparison = (a.email?.processed ? 1 : 0) - (b.email?.processed ? 1 : 0);
+          break;
+      }
+      
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+
+    return data;
+  };
+
+  const filteredData = getTabData();
+
+  const renderTableRow = (item: EmailWithDrafts, index: number) => {
+    const isExpanded = expandedRows.has(item.email?.id || index.toString());
+    const hasDetails = item.drafts && item.drafts.length > 0;
+    
+    return (
+      <div key={item.email?.id || index} className="border-b border-gray-200 dark:border-gray-700">
+        <div className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+          <div className="flex items-center p-3 gap-2">
+            {/* Expand button */}
             <Button
-              onClick={() => assignEmailMutation.mutate(email.id)}
-              disabled={assignEmailMutation.isPending}
-              className="w-full"
-              data-testid={`button-assign-${email.id}`}
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={() => toggleRow(item.email?.id || index.toString())}
+              disabled={!hasDetails}
             >
-              <UserCheck className="h-4 w-4 mr-2" />
-              Take to Work
+              {hasDetails && (
+                isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+              )}
             </Button>
-          )}
+
+            {/* CR Number */}
+            <div className="w-24 flex-shrink-0">
+              <span className="text-xs font-mono font-semibold">
+                {item.email?.crNumber || "-"}
+              </span>
+            </div>
+
+            {/* Subject */}
+            <div className="flex-1 min-w-0">
+              <div className="truncate text-sm font-medium">
+                {item.email?.subject || "No subject"}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                {item.email?.fromEmail}
+              </div>
+            </div>
+
+            {/* Items count */}
+            <div className="w-20 text-center">
+              <Badge variant="outline" className="text-xs">
+                {item.totalItems} items
+              </Badge>
+            </div>
+
+            {/* Progress */}
+            {item.totalItems > 0 && (
+              <div className="w-24">
+                <div className="flex items-center gap-1">
+                  <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div 
+                      className="bg-green-500 h-2 rounded-full transition-all"
+                      style={{ width: `${(item.completedItems / item.totalItems) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    {item.completedItems}/{item.totalItems}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Date */}
+            <div className="w-32 text-xs text-gray-500 dark:text-gray-400">
+              {item.email?.receivedAt && format(new Date(item.email.receivedAt), "MMM d, HH:mm")}
+            </div>
+
+            {/* Status */}
+            <div className="w-24">
+              <Badge className={cn("text-xs", getStatusColor(item.email?.processed ? "processed" : "pending"))}>
+                {item.email?.processed ? "Processed" : "Pending"}
+              </Badge>
+            </div>
+
+            {/* Assigned to */}
+            {item.email?.assignedToUserId && (
+              <div className="w-32">
+                <Badge variant="secondary" className="text-xs">
+                  <UserCheck className="h-3 w-3 mr-1" />
+                  {item.email?.assignedToUser?.name || "Assigned"}
+                </Badge>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center gap-1">
+              <TooltipProvider>
+                {activeTab === "available" && !item.email?.assignedToUserId && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => assignEmailMutation.mutate(item.email.id)}
+                        disabled={assignEmailMutation.isPending}
+                      >
+                        <UserPlus className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Take to Work</TooltipContent>
+                  </Tooltip>
+                )}
+                
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => {/* View details */}}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>View Details</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </div>
         </div>
-      </CardContent>
-    </Card>
-  );
+
+        {/* Expanded content */}
+        {isExpanded && hasDetails && (
+          <div className="bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700">
+            <div className="p-4">
+              <DraftOrderGroupCard
+                email={item.email}
+                drafts={item.drafts}
+                showTakeToWork={false}
+                isInProgress={activeTab === "in-progress"}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="space-y-6" data-testid="customer-requests-main">
-      <div className="flex justify-between items-center mb-4">
+    <div className="space-y-4" data-testid="customer-requests-main">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold">Customer Requests</h1>
-        <Button
-          onClick={reprocessEmails}
-          disabled={isReprocessing}
-          variant="outline"
-        >
-          {isReprocessing ? "Reprocessing..." : "Reprocess Pending Emails"}
-        </Button>
+        
+        <div className="flex items-center gap-2">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search all fields..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 w-64"
+            />
+          </div>
+
+          {/* Status filter */}
+          <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="processed">Processed</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Sort controls */}
+          <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date">Sort by Date</SelectItem>
+              <SelectItem value="cr">Sort by CR#</SelectItem>
+              <SelectItem value="status">Sort by Status</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+            className="h-9 w-9 p-0"
+          >
+            {sortOrder === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+          </Button>
+
+          {/* Reprocess button */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={reprocessEmails}
+                  disabled={isReprocessing}
+                  variant="outline"
+                  size="sm"
+                  className="h-9 w-9 p-0"
+                >
+                  <RefreshCw className={cn("h-4 w-4", isReprocessing && "animate-spin")} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Reprocess Pending Emails</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
+
+      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="available" data-testid="tab-available">
-            <Mail className="h-4 w-4 mr-2" />
-            Available ({Object.keys(workingDraftsByEmail).length})
+          <TabsTrigger value="available" className="flex items-center gap-1">
+            <Inbox className="h-4 w-4" />
+            <span className="hidden sm:inline">Available</span>
+            <Badge variant="secondary" className="ml-1 h-5 px-1">
+              {Object.keys(workingDraftsByEmail).length}
+            </Badge>
           </TabsTrigger>
-          <TabsTrigger value="in-progress" data-testid="tab-in-progress">
-            <UserCheck className="h-4 w-4 mr-2" />
-            In Progress ({myInProgressEmails.length})
+          
+          <TabsTrigger value="in-progress" className="flex items-center gap-1">
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">In Progress</span>
+            <Badge variant="secondary" className="ml-1 h-5 px-1">
+              {myInProgressEmails.length}
+            </Badge>
           </TabsTrigger>
-          <TabsTrigger value="drafts" data-testid="tab-drafts">
-            <Package className="h-4 w-4 mr-2" />
-            Draft Orders ({pendingDrafts.length})
+          
+          <TabsTrigger value="drafts" className="flex items-center gap-1">
+            <FileText className="h-4 w-4" />
+            <span className="hidden sm:inline">Drafts</span>
+            <Badge variant="secondary" className="ml-1 h-5 px-1">
+              {pendingDrafts.length}
+            </Badge>
           </TabsTrigger>
-          <TabsTrigger value="processed" data-testid="tab-processed">
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Processed ({processedEmails.length})
+          
+          <TabsTrigger value="processed" className="flex items-center gap-1">
+            <FileCheck className="h-4 w-4" />
+            <span className="hidden sm:inline">Processed</span>
+            <Badge variant="secondary" className="ml-1 h-5 px-1">
+              {processedEmails.length}
+            </Badge>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="available" className="space-y-4">
-          <div className="text-lg font-semibold mb-4">
-            All Draft Orders Being Worked On
-          </div>
-          
-          {/* Show all draft orders being worked on by any user */}
-          {Object.keys(workingDraftsByEmail).length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center text-gray-500">
-                No draft orders are currently being worked on
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {Object.entries(workingDraftsByEmail).map(([emailId, group]: [string, any]) => (
-                <div key={emailId} className="space-y-2">
-                  {/* Show who is working on this - moved above the card to avoid overlap */}
-                  <div className="flex justify-end">
-                    <Badge variant="secondary" className="flex items-center gap-1">
-                      <UserCheck className="h-3 w-3" />
-                      Working: {group.email?.assignedToUser?.name || "Андрей"}
-                    </Badge>
-                  </div>
-                  
-                  {/* Show the draft order group card */}
-                  <DraftOrderGroupCard
-                    email={group.email}
-                    drafts={group.drafts}
-                    showTakeToWork={false}
-                    isInProgress={false}
-                  />
+        {/* Tab content */}
+        <TabsContent value={activeTab} className="mt-4">
+          <Card>
+            <CardContent className="p-0">
+              {filteredData.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">
+                  {searchQuery ? "No results found" : "No items to display"}
                 </div>
-              ))}
-            </div>
-          )}
-        </TabsContent>
+              ) : (
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {/* Table header */}
+                  <div className="bg-gray-50 dark:bg-gray-800/50 p-3 flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-400">
+                    <div className="w-6"></div>
+                    <div className="w-24">CR#</div>
+                    <div className="flex-1">Subject / From</div>
+                    <div className="w-20 text-center">Items</div>
+                    {activeTab !== "processed" && <div className="w-24 text-center">Progress</div>}
+                    <div className="w-32">Date</div>
+                    <div className="w-24">Status</div>
+                    {(activeTab === "available" || activeTab === "in-progress") && (
+                      <div className="w-32">Assigned</div>
+                    )}
+                    <div className="w-20">Actions</div>
+                  </div>
 
-        <TabsContent value="in-progress" className="space-y-4">
-          <div className="text-lg font-semibold mb-4">
-            My Assigned Emails ({user?.name})
-          </div>
-          {myInProgressEmails.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center text-gray-500">
-                No assigned emails
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {/* Show all assigned emails */}
-              {myInProgressEmails.map((email: any) => {
-                // Get drafts for this email
-                const emailDrafts = assignedDrafts.filter((draft: any) => draft.emailId === email.id);
-                
-                return (
-                  <DraftOrderGroupCard
-                    key={email.id}
-                    email={email}
-                    drafts={emailDrafts}
-                    showTakeToWork={false}
-                    isInProgress={true}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="drafts" className="space-y-4">
-          <div className="text-lg font-semibold mb-4">
-            Pending Draft Orders
-          </div>
-          {pendingDrafts.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center text-gray-500">
-                No pending draft orders
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {/* Group drafts by email */}
-              {Object.entries(
-                pendingDrafts.reduce((groups: any, draft: any) => {
-                  const emailId = draft.emailId;
-                  if (!groups[emailId]) {
-                    groups[emailId] = {
-                      email: draft.email,
-                      drafts: []
-                    };
-                  }
-                  groups[emailId].drafts.push(draft);
-                  return groups;
-                }, {})
-              ).map(([emailId, group]: [string, any]) => (
-                <DraftOrderGroupCard
-                  key={emailId}
-                  email={group.email}
-                  drafts={group.drafts}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="processed" className="space-y-4">
-          <ProcessedEmailsList emails={processedEmails} />
+                  {/* Table rows */}
+                  {filteredData.map((item, index) => renderTableRow(item, index))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
