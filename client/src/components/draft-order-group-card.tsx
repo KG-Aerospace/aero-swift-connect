@@ -171,13 +171,26 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
       delete editingDrafts[draftId];
       setEditingDrafts({ ...editingDrafts });
     } else {
-      // Handle object types for AC Type and Engine Type
-      const acTypeValue = typeof draft.acType === 'object' && draft.acType !== null ? 
-        ((draft.acType as any)?.type || (draft.acType as any)?.name || "") : 
-        (draft.acType || "");
-      const engineTypeValue = typeof draft.engineType === 'object' && draft.engineType !== null ? 
-        ((draft.engineType as any)?.type || (draft.engineType as any)?.name || "") : 
-        (draft.engineType || "");
+      // Handle object types for AC Type and Engine Type - convert to string
+      const getStringValue = (value: any): string => {
+        if (!value) return "";
+        if (typeof value === 'string') return value;
+        if (typeof value === 'object' && value !== null) {
+          // Try common object properties
+          if (value.type) return value.type;
+          if (value.name) return value.name;
+          if (value.value) return value.value;
+          // If it's an array, take the first element
+          if (Array.isArray(value) && value.length > 0) return String(value[0]);
+          // Try to get the first property value
+          const values = Object.values(value);
+          if (values.length > 0) return String(values[0]);
+        }
+        return String(value);
+      };
+      
+      const acTypeValue = getStringValue(draft.acType);
+      const engineTypeValue = getStringValue(draft.engineType);
         
       setEditingDrafts({
         ...editingDrafts,
