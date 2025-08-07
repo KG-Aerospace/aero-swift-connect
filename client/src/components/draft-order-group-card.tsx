@@ -209,6 +209,7 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
           customerRequestDate: draft.customerRequestDate ? new Date(draft.customerRequestDate).toISOString().split('T')[0] : "",
           itemId: draft.requisitionNumber || draft.positionId || "",
           alternates: draft.alternates || "",
+          unitPrice: draft.unitPrice || "",
         }
       });
     }
@@ -221,7 +222,7 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
       ...data,
       requisitionNumber: data.itemId || data.requisitionNumber,
       positionId: data.itemId || data.positionId,
-      customerRequestDate: data.customerRequestDate ? new Date(data.customerRequestDate) : undefined,
+      customerRequestDate: data.customerRequestDate ? data.customerRequestDate : undefined,
     };
     
     // Ensure AC Type and Engine Type are strings not objects
@@ -868,6 +869,28 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
                           ) : (
                             <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                               {draft.alternates}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Unit Price field */}
+                      {(isEditing || draft.unitPrice) && (
+                        <div>
+                          <Label className="text-xs">Unit Price</Label>
+                          {isEditing ? (
+                            <Input
+                              value={editData.unitPrice || ""}
+                              onChange={(e) => setEditingDrafts({
+                                ...editingDrafts,
+                                [draft.id]: { ...editData, unitPrice: e.target.value }
+                              })}
+                              className="mt-1 h-7 text-xs"
+                              placeholder="Unit price in USD"
+                            />
+                          ) : (
+                            <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                              {draft.unitPrice ? `~$${draft.unitPrice} USD` : "-"}
                             </div>
                           )}
                         </div>

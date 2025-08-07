@@ -108,6 +108,12 @@ export function AutocompleteInput({
   };
 
   const selectSuggestion = (suggestion: string) => {
+    // Update the input value immediately
+    if (inputRef.current) {
+      inputRef.current.value = suggestion;
+    }
+    
+    // Call both callbacks
     if (onValueChange) onValueChange(suggestion);
     if (onChange) {
       const event = {
@@ -115,12 +121,16 @@ export function AutocompleteInput({
       } as React.ChangeEvent<HTMLInputElement>;
       onChange(event);
     }
+    
     setIsOpen(false);
     setSelectedIndex(-1);
-    // Blur the input to prevent dropdown from reopening
-    if (inputRef.current) {
-      inputRef.current.blur();
-    }
+    
+    // Delay blur to ensure value is set
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.blur();
+      }
+    }, 50);
   };
 
   return (

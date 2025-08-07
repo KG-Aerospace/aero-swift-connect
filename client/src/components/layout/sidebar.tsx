@@ -10,7 +10,10 @@ import {
   Settings,
   User,
   X,
-  XCircle
+  XCircle,
+  ChevronLeft,
+  ChevronRight,
+  Menu
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
@@ -20,9 +23,11 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 interface SidebarProps {
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
+  collapsed: boolean;
+  setCollapsed: (collapsed: boolean) => void;
 }
 
-export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
+export default function Sidebar({ sidebarOpen, setSidebarOpen, collapsed, setCollapsed }: SidebarProps) {
   const [location] = useLocation();
 
   const { data: stats } = useQuery<{
@@ -94,102 +99,114 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
   ];
 
   const SidebarContent = () => (
-    <div className="bg-white dark:bg-gray-800 shadow-lg flex flex-col h-full" data-testid="sidebar">
+    <div className={`bg-white dark:bg-gray-800 shadow-lg flex flex-col h-full transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'}`} data-testid="sidebar">
       {/* Logo Section */}
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-            <Plane className="text-white text-lg" data-testid="logo-icon" />
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <Plane className="text-white text-sm" data-testid="logo-icon" />
+            </div>
+            {!collapsed && (
+              <div>
+                <h1 className="text-lg font-bold text-gray-900 dark:text-white" data-testid="logo-title">
+                  AviationParts
+                </h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400" data-testid="logo-subtitle">
+                  Management System
+                </p>
+              </div>
+            )}
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white" data-testid="logo-title">
-              AviationParts
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400" data-testid="logo-subtitle">
-              Management System
-            </p>
-          </div>
+          {/* Collapse toggle button - desktop only */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setCollapsed(!collapsed)}
+            className="hidden md:flex w-8 h-8 p-0"
+            data-testid="sidebar-toggle"
+          >
+            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </Button>
         </div>
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 p-4 space-y-2" data-testid="navigation">
+      <nav className="flex-1 p-2 space-y-1" data-testid="navigation">
         {menuItems.map((item) => {
           const IconComponent = item.icon;
           return (
             <Link key={item.path} href={item.path}>
               <a
-                className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+                className={`group relative flex items-center p-3 rounded-lg transition-colors ${
                   item.active
                     ? "bg-primary text-white"
                     : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                }`}
+                } ${collapsed ? 'justify-center' : ''}`}
                 data-testid={`nav-${item.path.slice(1) || "dashboard"}`}
                 onClick={() => setSidebarOpen(false)}
+                title={collapsed ? item.label : ''}
               >
-                <IconComponent className="w-5 h-5" />
-                <span className="font-medium">{item.label}</span>
-                {item.badge && (
-                  <Badge 
-                    variant={item.badgeVariant} 
-                    className="ml-auto"
-                    data-testid={`badge-${item.path.slice(1) || "dashboard"}`}
-                  >
-                    {item.badge}
-                  </Badge>
+                <IconComponent className="w-5 h-5 flex-shrink-0" />
+                {!collapsed && (
+                  <>
+                    <span className="font-medium ml-3">{item.label}</span>
+                    {item.badge && (
+                      <Badge 
+                        variant={item.badgeVariant} 
+                        className="ml-auto"
+                        data-testid={`badge-${item.path.slice(1) || "dashboard"}`}
+                      >
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </>
+                )}
+                {collapsed && item.badge && (
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs">{item.badge}</span>
+                  </div>
+                )}
+                {/* Tooltip for collapsed state */}
+                {collapsed && (
+                  <div className="absolute left-16 bg-gray-800 text-white px-2 py-1 rounded text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                    {item.label}
+                    {item.badge && (
+                      <Badge variant={item.badgeVariant} className="ml-2">
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </div>
                 )}
               </a>
             </Link>
           );
         })}
       </nav>
-
-      {/* User Profile */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700" data-testid="user-profile">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
-            <User className="text-gray-600 dark:text-gray-300 text-sm" data-testid="user-avatar" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900 dark:text-white" data-testid="user-name">
-              John Smith
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400" data-testid="user-role">
-              System Administrator
-            </p>
-          </div>
-          <button 
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            data-testid="user-settings"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
     </div>
   );
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <div className="hidden md:flex w-64">
-        <SidebarContent />
-      </div>
-      
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 md:hidden bg-black bg-opacity-50"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-      
-      {/* Mobile Sidebar */}
-      <div 
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out md:hidden ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
+      {/* Mobile sidebar */}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetTrigger asChild className="md:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="fixed top-4 left-4 z-40"
+            data-testid="mobile-sidebar-trigger"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="p-0 w-64">
+          <SidebarContent />
+        </SheetContent>
+      </Sheet>
+
+      {/* Desktop sidebar */}
+      <div className={`hidden md:flex fixed left-0 top-0 h-full z-30 transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'}`}>
         <SidebarContent />
       </div>
     </>
