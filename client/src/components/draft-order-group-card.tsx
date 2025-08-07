@@ -63,7 +63,7 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
   });
 
   // Get all CR numbers from the drafts
-  const crNumbers = [...new Set(drafts.map(draft => draft.crNumber).filter(Boolean))];
+  const crNumbers = Array.from(new Set(drafts.map(draft => draft.crNumber).filter(Boolean)));
   
   // Get orders related to this email by matching email ID
   const relatedOrders = orders.filter((order: any) => 
@@ -172,11 +172,11 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
       setEditingDrafts({ ...editingDrafts });
     } else {
       // Handle object types for AC Type and Engine Type
-      const acTypeValue = typeof draft.acType === 'object' ? 
-        (draft.acType?.type || draft.acType?.name || "") : 
+      const acTypeValue = typeof draft.acType === 'object' && draft.acType !== null ? 
+        ((draft.acType as any)?.type || (draft.acType as any)?.name || "") : 
         (draft.acType || "");
-      const engineTypeValue = typeof draft.engineType === 'object' ? 
-        (draft.engineType?.type || draft.engineType?.name || "") : 
+      const engineTypeValue = typeof draft.engineType === 'object' && draft.engineType !== null ? 
+        ((draft.engineType as any)?.type || (draft.engineType as any)?.name || "") : 
         (draft.engineType || "");
         
       setEditingDrafts({
@@ -786,10 +786,20 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
                             />
                           ) : (
                             <div className="font-medium">
-                              {typeof draft.acType === 'object' ? 
-                                (draft.acType?.type || draft.acType?.name || "-") : 
-                                (draft.acType || "-")
-                              }
+                              {(() => {
+                                if (!draft.acType) return "-";
+                                if (typeof draft.acType === 'string') return draft.acType;
+                                if (typeof draft.acType === 'object' && draft.acType !== null) {
+                                  // Handle various object structures
+                                  const acObj = draft.acType as any;
+                                  if (acObj.type) return acObj.type;
+                                  if (acObj.name) return acObj.name;
+                                  if (acObj.value) return acObj.value;
+                                  // If still an object, try to extract meaningful value
+                                  return Object.values(acObj)[0] || "-";
+                                }
+                                return String(draft.acType);
+                              })()}
                             </div>
                           )}
                         </div>
@@ -809,10 +819,20 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
                             />
                           ) : (
                             <div className="font-medium">
-                              {typeof draft.engineType === 'object' ? 
-                                (draft.engineType?.type || draft.engineType?.name || "-") : 
-                                (draft.engineType || "-")
-                              }
+                              {(() => {
+                                if (!draft.engineType) return "-";
+                                if (typeof draft.engineType === 'string') return draft.engineType;
+                                if (typeof draft.engineType === 'object' && draft.engineType !== null) {
+                                  // Handle various object structures
+                                  const engObj = draft.engineType as any;
+                                  if (engObj.type) return engObj.type;
+                                  if (engObj.name) return engObj.name;
+                                  if (engObj.value) return engObj.value;
+                                  // If still an object, try to extract meaningful value
+                                  return Object.values(engObj)[0] || "-";
+                                }
+                                return String(draft.engineType);
+                              })()}
                             </div>
                           )}
                         </div>

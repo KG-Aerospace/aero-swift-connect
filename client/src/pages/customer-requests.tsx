@@ -402,10 +402,18 @@ export default function CustomerRequests() {
                       </Badge>
                     </div>
                     <div className="w-20 text-gray-500">
-                      {typeof draft.acType === 'object' ? 
-                        (draft.acType?.type || draft.acType?.name || "-") : 
-                        (draft.acType || "-")
-                      }
+                      {(() => {
+                        if (!draft.acType) return "-";
+                        if (typeof draft.acType === 'string') return draft.acType;
+                        if (typeof draft.acType === 'object' && draft.acType !== null) {
+                          // Handle various object structures
+                          return draft.acType.type || 
+                                 draft.acType.name || 
+                                 draft.acType.value ||
+                                 JSON.stringify(draft.acType);
+                        }
+                        return String(draft.acType);
+                      })()}
                     </div>
                     <div className="w-24 text-right font-medium">
                       {draft.unitPrice ? 
