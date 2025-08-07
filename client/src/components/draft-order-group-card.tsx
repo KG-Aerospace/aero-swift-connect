@@ -789,9 +789,9 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
                           {isEditing ? (
                             <AutocompleteInput
                               value={editData.acType || ""}
-                              onChange={(value) => setEditingDrafts({
+                              onChange={(e) => setEditingDrafts({
                                 ...editingDrafts,
-                                [draft.id]: { ...editData, acType: value }
+                                [draft.id]: { ...editData, acType: e.target.value }
                               })}
                               suggestions={acTypes.map(t => t.type).filter(Boolean)}
                               placeholder="AC Type"
@@ -822,9 +822,9 @@ export function DraftOrderGroupCard({ email, drafts, showTakeToWork = true, isIn
                           {isEditing ? (
                             <AutocompleteInput
                               value={editData.engineType || ""}
-                              onChange={(value) => setEditingDrafts({
+                              onChange={(e) => setEditingDrafts({
                                 ...editingDrafts,
-                                [draft.id]: { ...editData, engineType: value }
+                                [draft.id]: { ...editData, engineType: e.target.value }
                               })}
                               suggestions={engineTypes.map(t => t.type).filter(Boolean)}
                               placeholder="Engine"
