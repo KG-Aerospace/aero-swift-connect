@@ -21,8 +21,27 @@ export function AutocompleteInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Helper function to safely convert value to string
+  const getStringValue = (val: any): string => {
+    if (!val) return "";
+    if (typeof val === 'string') return val;
+    if (typeof val === 'object' && val !== null) {
+      // Try common object properties
+      if (val.type) return val.type;
+      if (val.name) return val.name;
+      if (val.value) return val.value;
+      if (val.label) return val.label;
+      // If it's an array, take the first element
+      if (Array.isArray(val) && val.length > 0) return String(val[0]);
+      // Try to get the first property value
+      const values = Object.values(val);
+      if (values.length > 0) return String(values[0]);
+    }
+    return String(val);
+  };
+
   useEffect(() => {
-    const inputValue = (value || "").toString().toLowerCase();
+    const inputValue = getStringValue(value).toLowerCase();
     if (inputValue.length > 0 && suggestions.length > 0) {
       const filtered = suggestions.filter(s => 
         s.toLowerCase().includes(inputValue)
@@ -108,11 +127,11 @@ export function AutocompleteInput({
     <div className="relative">
       <Input
         ref={inputRef}
-        value={value}
+        value={getStringValue(value)}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
         onFocus={() => {
-          const inputValue = (value || "").toString().toLowerCase();
+          const inputValue = getStringValue(value).toLowerCase();
           if (inputValue.length > 0 && filteredSuggestions.length > 0) {
             setIsOpen(true);
           }
